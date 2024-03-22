@@ -8,6 +8,22 @@
 
 ### Offline - Locally
 
+1. Configure Database
+
+    Start docker container running Postgres local.
+    ```bash
+    docker compose -f ./deployments/docker-compose.yml up gridiron-db -d
+    ```
+
+* Terraform DB
+
+    Run terraform to configure database
+    ```bash
+    terraform -chdir=terraform/ init
+    terraform -chdir=terraform/ plan
+    terraform -chdir=terraform/ apply -auto-approve
+    ```
+
 1. Run Gridiron 
 
     Run the Gridiron docker container with
@@ -19,7 +35,6 @@
     ```bash
     docker compose -f ./deployments/docker-compose.yml up -d --no-deps --build gridiron-app
     ```
-
 
 #### Clean Up
 
