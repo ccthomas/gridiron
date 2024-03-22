@@ -5,12 +5,16 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func Get() *zap.Logger {
-	logger, _ := zap.Config{
-		Encoding:    "json",
-		Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		OutputPaths: []string{"stdout"},
-	}.Build()
+var Logger *zap.Logger
 
-	return logger
+func Get() *zap.Logger {
+	if Logger == nil {
+		Logger, _ = zap.Config{
+			Encoding:    "json",
+			Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
+			OutputPaths: []string{"stdout"},
+		}.Build()
+	}
+
+	return Logger
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ccthomas/gridiron/api"
+	"github.com/ccthomas/gridiron/internal/system"
 	gridironLogger "github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -17,13 +18,14 @@ func main() {
 
 	logger.Info("Starting Gridiron...")
 
-	handler := api.NewHandlers(logger)
+	systemHandler := system.NewHandlers(logger)
+	handler := api.NewHandlers(logger, systemHandler)
 
 	logger.Debug("Construct router.")
 	r := mux.NewRouter()
 
 	logger.Debug("Route paths to handlers.")
-	r.HandleFunc("/health", handler.HealthHandler).Methods("GET")
+	handler.RouteApis(r)
 
 	logger.Debug("Handle router with http.")
 	http.Handle("/", r)

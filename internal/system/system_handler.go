@@ -1,4 +1,4 @@
-package api
+package system
 
 import (
 	"encoding/json"
@@ -8,19 +8,22 @@ import (
 	"go.uber.org/zap"
 )
 
-type HealthMessage struct {
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
+// NewHandlers initializes and returns a new Handlers instance
+func NewHandlers(logger *zap.Logger) *SystemHandlers {
+	logger.Debug("Constructing new system handlers")
+	return &SystemHandlers{
+		Logger: logger,
+	}
 }
 
-func (h *Handlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
+func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	h.Logger.Info("Health Handler hit.")
 	h.Logger.Debug("Request for Health Handler.", zap.Any("request", r))
 
 	// Create a HealthMessage instance
 	message := HealthMessage{
-		Message:   "Service is healthy",
-		Timestamp: time.Now().UTC().Format(time.RFC3339), // Format timestamp as ISO8601
+		Message:   "Gridiron Service is Healthy",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
 
 	h.Logger.Debug("JSON encode message.")

@@ -2,6 +2,8 @@
 
 [GoLang](https://go.dev/learn/) Modular Monolith designed to track American Football data.
 
+[ChatGPT 3.5](https://openai.com/blog/chatgpt) was heavily used for "busy" or "repetitive" work.
+
 ## Setup
 
 ### Offline - Locally
@@ -15,7 +17,7 @@
 
     You can rebuild the and run the app with the following
     ```bash
-    docker compose -f ./offline/docker-compose.yml up -d --no-deps --build gridiron-app
+    docker compose -f ./deployments/docker-compose.yml up -d --no-deps --build gridiron-app
     ```
 
 
@@ -35,14 +37,25 @@ You can easily clean up your local environment with the following...
     ./scripts/docker-nuke.sh
     ```
 
+## Testing
+
+### Unit Test
+`./internal` & `./pkg` contain unit tests. You can run them with the following.
+
+```bash
+go test ./pkg/... ./internal/...
+```
+
+### Integration Test
+The `main.go` app and `./api` are tested with integration test.
+
+```bash
+go test ./test/...
+```
+
 ## Technical Design
 
-Gridiron follows the [Project Layout](https://github.com/golang-standards/project-layout) specified by the golang standards.
-
-### Flaws in Design
-* Dockerfile should be placed at `./build` and main.go should be placed at `./cmd/gridiron/gridiron.go`
-    * Files are instead at root.
-    * During initial development, there were problems getting things working. Instead of investing the time in this small item, I chose to move it to the root dir and move forward with the project.
+[Technical Design Document](docs/TECHNICAL_DESIGN.md)
 
 ## License
 
