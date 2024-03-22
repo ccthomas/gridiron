@@ -57,6 +57,10 @@ go test ./test/...
 
 [Technical Design Document](docs/TECHNICAL_DESIGN.md)
 
+## Contributing
+
+This project follows [Feature branch workflow](https://docs.gitlab.com/ee/gitlab-basics/feature_branch_workflow.html)
+
 ## License
 
 [ISC License](LICENSE)
