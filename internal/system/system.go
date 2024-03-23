@@ -1,6 +1,10 @@
 package system
 
-import "go.uber.org/zap"
+import (
+	"database/sql"
+
+	"go.uber.org/zap"
+)
 
 type HealthMessage struct {
 	Message   string `json:"message"`
@@ -9,4 +13,5 @@ type HealthMessage struct {
 
 type SystemHandlers struct {
 	Logger *zap.Logger
+	DB     *sql.DB
 }

@@ -31,5 +31,6 @@ func (h *Handlers) routeSystemApis(r *mux.Router) {
 	systemRoutes := r.PathPrefix("/system").Subrouter()
 
 	h.Logger.Debug("Mapping api get /health to health handler function")
-	systemRoutes.HandleFunc("/health", h.SystemHandlers.HealthHandler).Methods("GET")
+	systemRoutes.HandleFunc("/service/health", h.SystemHandlers.HealthHandler).Methods("GET")
+	systemRoutes.HandleFunc("/database/health", h.SystemHandlers.DatabaseHealthHandler).Methods("GET")
 }

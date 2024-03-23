@@ -8,6 +8,22 @@
 
 ### Offline - Locally
 
+1. Configure Database
+
+    Start docker container running Postgres local.
+    ```bash
+    docker compose -f ./deployments/docker-compose.yml up gridiron-db -d
+    ```
+
+* Terraform DB
+
+    Run terraform to configure database
+    ```bash
+    terraform -chdir=deployments/ init
+    terraform -chdir=deployments/ plan
+    terraform -chdir=deployments/ apply -auto-approve
+    ```
+
 1. Run Gridiron 
 
     Run the Gridiron docker container with
@@ -19,7 +35,6 @@
     ```bash
     docker compose -f ./deployments/docker-compose.yml up -d --no-deps --build gridiron-app
     ```
-
 
 #### Clean Up
 
@@ -40,7 +55,9 @@ You can easily clean up your local environment with the following...
 ## Testing
 
 ### Unit Test
+
 `./internal` & `./pkg` contain unit tests. You can run them with the following.
+* Note: Only some files have unit tests. Go makes it hard to mock or stub out functions. And the Go community seems to think unit tests are pointless in some areas, so there is no clear way to test that part of the stack.
 
 ```bash
 go test ./pkg/... ./internal/...

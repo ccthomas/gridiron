@@ -7,6 +7,7 @@ import (
 
 	"github.com/ccthomas/gridiron/api"
 	"github.com/ccthomas/gridiron/internal/system"
+	"github.com/ccthomas/gridiron/pkg/database"
 	gridironLogger "github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -18,7 +19,15 @@ func main() {
 
 	logger.Info("Starting Gridiron...")
 
-	systemHandler := system.NewHandlers(logger)
+	logger.Debug("Connect to database.")
+	dm := database.DatabaseManager{
+		Logger: logger,
+	}
+
+	db := dm.ConnectPostgres()
+
+	logger.Debug("Construct handlers.")
+	systemHandler := system.NewHandlers(logger, db)
 	handler := api.NewHandlers(logger, systemHandler)
 
 	logger.Debug("Construct router.")

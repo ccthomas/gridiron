@@ -7,21 +7,47 @@
 	},
 	"item": [
 		{
-			"name": "Health",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{url}}/health",
-					"host": [
-						"{{url}}"
-					],
-					"path": [
-						"health"
-					]
+			"name": "System",
+			"item": [
+				{
+					"name": "Health Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/system/service/health",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"system",
+								"service",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Health Database",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/system/database/health",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"system",
+								"database",
+								"health"
+							]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
+			]
 		}
 	],
 	"event": [
