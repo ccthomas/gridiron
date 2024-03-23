@@ -1,6 +1,9 @@
 package api
 
 import (
+	"database/sql"
+	"net/http"
+
 	"github.com/ccthomas/gridiron/internal/system"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/gorilla/mux"
@@ -15,12 +18,16 @@ type Handlers struct {
 }
 
 // NewHandlers initializes and returns a new Handlers instance
-func NewHandlers(logger *zap.Logger, systemHandlers *system.SystemHandlers, userAccountHandlers *useracc.UserAccountHandlers) *Handlers {
+func NewHandlers(db *sql.DB, logger *zap.Logger, userRepo useracc.UserAccountRepository) *Handlers {
 	logger.Debug("Constructing new handlers")
+
+	systemHandlers := system.NewHandlers(db, logger)
+	userAccHandlers := useracc.NewHandlers(logger, userRepo)
+
 	return &Handlers{
 		Logger:              logger,
 		SystemHandlers:      systemHandlers,
-		UserAccountHandlers: userAccountHandlers,
+		UserAccountHandlers: userAccHandlers,
 	}
 }
 
@@ -44,5 +51,34 @@ func (h *Handlers) routeUserAccountApis(r *mux.Router) {
 	systemRoutes := r.PathPrefix("/user").Subrouter()
 
 	h.Logger.Debug("Mapping api get /health to health handler function")
-	systemRoutes.HandleFunc("/authr", h.UserAccountHandlers.CreateNewUserHandler).Methods("GET")
+	systemRoutes.HandleFunc("", h.UserAccountHandlers.CreateNewUserHandler).Methods("POST")
+	systemRoutes.HandleFunc("/login", h.UserAccountHandlers.LoginHandler).Methods("POST")
+	systemRoutes.HandleFunc("/authorizer-context", h.tokenAuthorizer(h.UserAccountHandlers.GetAuthorizerContextHandler)).Methods("GET")
+}
+
+func (h *Handlers) tokenAuthorizer(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.Logger.Debug("Token Authorizer")
+
+		// Extract the token from the Authorization header
+		authHeader := r.Header.Get("Authorization")
+
+		if authHeader == "" {
+			h.Logger.Warn("Authorization header not provided.")
+			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
+			return
+		}
+
+		h.Logger.Debug("Authorize request.")
+		err := h.UserAccountHandlers.TokenAuthorizerHandler(w, r)
+		if err != nil {
+			h.Logger.Warn("Is not authorizer")
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Pass the request to the next handler if the token is valid
+		h.Logger.Debug("Is Authorized!")
+		next.ServeHTTP(w, r)
+	}
 }

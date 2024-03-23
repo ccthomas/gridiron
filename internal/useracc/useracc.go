@@ -1,12 +1,10 @@
 package useracc
 
 import (
-	"database/sql"
-
 	"go.uber.org/zap"
 )
 
-type LoginInfoDTO struct {
+type LoginData struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -23,6 +21,6 @@ type UserAccountRepository interface {
 }
 
 type UserAccountHandlers struct {
-	DB     *sql.DB
-	Logger *zap.Logger
+	Logger                *zap.Logger
+	UserAccountRepository UserAccountRepository
 }

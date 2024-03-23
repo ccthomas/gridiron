@@ -10,7 +10,7 @@ import (
 )
 
 // NewHandlers initializes and returns a new Handlers instance
-func NewHandlers(logger *zap.Logger, db *sql.DB) *SystemHandlers {
+func NewHandlers(db *sql.DB, logger *zap.Logger) *SystemHandlers {
 	logger.Debug("Constructing new system handlers")
 	return &SystemHandlers{
 		Logger: logger,
