@@ -24,6 +24,19 @@
     terraform -chdir=deployments/ apply -auto-approve
     ```
 
+1. Generate Auth Private Key
+
+    **This is not necessarily a good practice. For the sake of local demo, this approach get's the job done**
+
+    First, you need to generate a private key.
+    Copy contents outputted from the file and assign it to `.env` variable `PRIVATE_KEY`
+
+    ```bash
+    openssl genpkey -algorithm RSA -out private_key.pem
+    ```
+
+    Then assign it to the environment 
+
 1. Run Gridiron 
 
     Run the Gridiron docker container with

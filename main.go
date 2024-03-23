@@ -7,6 +7,7 @@ import (
 
 	"github.com/ccthomas/gridiron/api"
 	"github.com/ccthomas/gridiron/internal/system"
+	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/database"
 	gridironLogger "github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/gorilla/mux"
@@ -28,7 +29,8 @@ func main() {
 
 	logger.Debug("Construct handlers.")
 	systemHandler := system.NewHandlers(logger, db)
-	handler := api.NewHandlers(logger, systemHandler)
+	userAccHandler := useracc.NewHandlers(db, logger)
+	handler := api.NewHandlers(logger, systemHandler, userAccHandler)
 
 	logger.Debug("Construct router.")
 	r := mux.NewRouter()

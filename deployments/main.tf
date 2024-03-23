@@ -34,6 +34,6 @@ provider "postgresql" {
 }
 
 # Define Schemas
-# resource "postgresql_schema" "my_schema" {
-#   name = "my_schema"
-# }
+resource "postgresql_schema" "user_account" {
+  name = "user_account"
+}
