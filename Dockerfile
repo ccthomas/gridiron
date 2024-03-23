@@ -30,6 +30,8 @@ FROM gcr.io/distroless/base-debian11 AS build-release-stage
 
 WORKDIR /
 
+COPY --from=build-stage /gridiron /gridiron
+
 EXPOSE 8080
 
 USER nonroot:nonroot

@@ -20,7 +20,6 @@ func NewHandlers(logger *zap.Logger, db *sql.DB) *SystemHandlers {
 
 func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	h.Logger.Info("Health Handler hit.")
-	h.Logger.Debug("Request for Health Handler.", zap.Any("request", r))
 
 	// Create a HealthMessage instance
 	message := HealthMessage{
@@ -44,7 +43,6 @@ func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *SystemHandlers) DatabaseHealthHandler(w http.ResponseWriter, r *http.Request) {
 	h.Logger.Info("Database Health Handler hit.")
-	h.Logger.Debug("Request for database health handler.", zap.Any("request", r))
 
 	err := h.DB.Ping()
 	if err != nil {

@@ -15,13 +15,18 @@
     docker compose -f ./deployments/docker-compose.yml up gridiron-db -d
     ```
 
-* Terraform DB
+1. Terraform DB
 
     Run terraform to configure database
     ```bash
-    terraform -chdir=deployments/ init
-    terraform -chdir=deployments/ plan
-    terraform -chdir=deployments/ apply -auto-approve
+    terraform -chdir=deployments/terraform/ init
+    terraform -chdir=deployments/terraform/ plan
+    terraform -chdir=deployments/terraform/ apply -auto-approve
+    ```
+
+    Run migrations
+    ```
+    migrate -path deployments/sql/migrations/ -database "postgresql://my_user:my_password@127.0.0.1:5432/my_db?sslmode=disable" -verbose up
     ```
 
 1. Generate Auth Private Key
@@ -90,6 +95,15 @@ go test ./test/...
 ## Contributing
 
 This project follows [Feature branch workflow](https://docs.gitlab.com/ee/gitlab-basics/feature_branch_workflow.html)
+
+### Migrations
+
+This project uses [Migrate](https://github.com/golang-migrate/migrate) to manage migrations.
+
+The following command can be used to generate a new migration.
+```bash
+migrate create -ext sql -dir deployments/sql/migrations/ -seq <name>
+```
 
 ## License
 
