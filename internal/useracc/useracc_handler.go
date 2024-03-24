@@ -63,10 +63,7 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	}
 
 	h.Logger.Debug("Construct response body.")
-	response := struct {
-		Id       string `json:"id"`
-		Username string `json:"username"`
-	}{
+	response := &CreatedUser{
 		Id:       id,
 		Username: newUserData.Username,
 	}

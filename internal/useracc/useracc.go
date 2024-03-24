@@ -9,6 +9,11 @@ type LoginData struct {
 	Password string `json:"password"`
 }
 
+type CreatedUser struct {
+	Id       string `json:"id"`
+	Username string `json:"username"`
+}
+
 type UserAccount struct {
 	Id           string `json:"id"`
 	Username     string `json:"username"`

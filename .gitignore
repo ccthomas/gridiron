@@ -3,6 +3,7 @@
 # ========
 
 .env
+private_key.pem
 
 # ==
 # Go
