@@ -20,20 +20,16 @@ func main() {
 	logger.Info("Starting Gridiron...")
 
 	logger.Debug("Connect to database.")
-	dm := database.DatabaseManager{
-		Logger: logger,
-	}
 
-	db := dm.ConnectPostgres()
+	db := database.ConnectPostgres()
 	defer db.Close()
 
 	userRepo := &useracc.UserAccountRepositoryImpl{
-		DB:     db,
-		Logger: logger,
+		DB: db,
 	}
 
 	logger.Debug("Construct handlers.")
-	handler := api.NewHandlers(db, logger, userRepo)
+	handler := api.NewHandlers(db, userRepo)
 
 	logger.Debug("Construct router.")
 	r := mux.NewRouter()

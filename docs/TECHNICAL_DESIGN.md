@@ -4,8 +4,7 @@
 
 Gridiron follows the [Project Layout](https://github.com/golang-standards/project-layout) specified by the golang standards.
 
-### Flaws in Design
-* Dockerfile should be placed at `./build` and main.go should be placed at `./cmd/gridiron/gridiron.go`
+* main.go should be placed at `./cmd/gridiron/gridiron.go`
     * Files are instead at root.
     * During initial development, there were problems getting things working. Instead of investing the time in this small item, I chose to move it to the root dir and move forward with the project.
 

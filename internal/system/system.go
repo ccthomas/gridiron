@@ -2,8 +2,6 @@ package system
 
 import (
 	"database/sql"
-
-	"go.uber.org/zap"
 )
 
 type HealthMessage struct {
@@ -12,6 +10,5 @@ type HealthMessage struct {
 }
 
 type SystemHandlers struct {
-	Logger *zap.Logger
-	DB     *sql.DB
+	DB *sql.DB
 }

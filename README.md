@@ -12,46 +12,28 @@
 
     Start docker container running Postgres local.
     ```bash
-    docker compose -f ./deployments/docker-compose.yml up gridiron-db -d
+    docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up gridiron-db -d
     ```
 
-1. Terraform DB
+1. Run Migrations
 
-    Run terraform to configure database
-    ```bash
-    terraform -chdir=deployments/terraform/ init
-    terraform -chdir=deployments/terraform/ plan
-    terraform -chdir=deployments/terraform/ apply -auto-approve
-    ```
+    **Check .env.offline and verify the correct username, password, host, and db is being used in the below command.**
 
     Run migrations
     ```
-    migrate -path deployments/sql/migrations/ -database "postgresql://my_user:my_password@127.0.0.1:5432/my_db?sslmode=disable" -verbose up
+    docker run -v ./deployments/sql/migrations:/migrations migrate/migrate -path migrations/ -database "postgres://my_user:my_password@host.docker.internal/my_db?sslmode=disable" up
     ```
-
-1. Generate Auth Private Key
-
-    **This is not necessarily a good practice. For the sake of local demo, this approach get's the job done**
-
-    First, you need to generate a private key.
-    Copy contents outputted from the file and assign it to `.env` variable `PRIVATE_KEY`
-
-    ```bash
-    openssl genpkey -algorithm RSA -out private_key.pem
-    ```
-
-    Then assign it to the environment 
 
 1. Run Gridiron 
 
     Run the Gridiron docker container with
     ```bash
-    docker compose -f ./deployments/docker-compose.yml up -d gridiron-app
+    docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up -d gridiron-service
     ```
 
     You can rebuild the and run the app with the following
     ```bash
-    docker compose -f ./deployments/docker-compose.yml up -d --no-deps --build gridiron-app
+    docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up -d --no-cache --no-deps --build gridiron-service
     ```
 
 #### Clean Up

@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS user_account;
+
 CREATE TABLE IF NOT EXISTS user_account.user_account (
     id VARCHAR(255) PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,

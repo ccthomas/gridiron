@@ -1,9 +1,5 @@
 package useracc
 
-import (
-	"go.uber.org/zap"
-)
-
 type LoginData struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -26,6 +22,5 @@ type UserAccountRepository interface {
 }
 
 type UserAccountHandlers struct {
-	Logger                *zap.Logger
 	UserAccountRepository UserAccountRepository
 }

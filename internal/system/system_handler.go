@@ -6,20 +6,19 @@ import (
 	"net/http"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/ccthomas/gridiron/pkg/logger"
 )
 
 // NewHandlers initializes and returns a new Handlers instance
-func NewHandlers(db *sql.DB, logger *zap.Logger) *SystemHandlers {
-	logger.Debug("Constructing new system handlers")
+func NewHandlers(db *sql.DB) *SystemHandlers {
+	logger.Get().Debug("Constructing new system handlers")
 	return &SystemHandlers{
-		Logger: logger,
-		DB:     db,
+		DB: db,
 	}
 }
 
 func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	h.Logger.Info("Health Handler hit.")
+	logger.Get().Info("Health Handler hit.")
 
 	// Create a HealthMessage instance
 	message := HealthMessage{
@@ -27,22 +26,22 @@ func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
 
-	h.Logger.Debug("JSON encode message.")
+	logger.Get().Debug("JSON encode message.")
 	response, err := json.Marshal(message)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	h.Logger.Debug("Write the response.")
+	logger.Get().Debug("Write the response.")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
-	h.Logger.Debug("Health Handler completed.")
+	logger.Get().Debug("Health Handler completed.")
 }
 
 func (h *SystemHandlers) DatabaseHealthHandler(w http.ResponseWriter, r *http.Request) {
-	h.Logger.Info("Database Health Handler hit.")
+	logger.Get().Info("Database Health Handler hit.")
 
 	err := h.DB.Ping()
 	if err != nil {
@@ -55,16 +54,16 @@ func (h *SystemHandlers) DatabaseHealthHandler(w http.ResponseWriter, r *http.Re
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
 
-	h.Logger.Debug("JSON encode message.")
+	logger.Get().Debug("JSON encode message.")
 	response, err := json.Marshal(message)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	h.Logger.Debug("Write the response.")
+	logger.Get().Debug("Write the response.")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
-	h.Logger.Debug("Database Health Handler completed.")
+	logger.Get().Debug("Database Health Handler completed.")
 }
