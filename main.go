@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/ccthomas/gridiron/api"
-	"github.com/ccthomas/gridiron/internal/system"
+	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/database"
 	gridironLogger "github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/gorilla/mux"
@@ -20,15 +20,16 @@ func main() {
 	logger.Info("Starting Gridiron...")
 
 	logger.Debug("Connect to database.")
-	dm := database.DatabaseManager{
-		Logger: logger,
+
+	db := database.ConnectPostgres()
+	defer db.Close()
+
+	userRepo := &useracc.UserAccountRepositoryImpl{
+		DB: db,
 	}
 
-	db := dm.ConnectPostgres()
-
 	logger.Debug("Construct handlers.")
-	systemHandler := system.NewHandlers(logger, db)
-	handler := api.NewHandlers(logger, systemHandler)
+	handler := api.NewHandlers(db, userRepo)
 
 	logger.Debug("Construct router.")
 	r := mux.NewRouter()
