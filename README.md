@@ -36,6 +36,15 @@
     docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up -d --no-deps --build gridiron-service
     ```
 
+1. Run Web (React UI)
+
+    Run the Gridiron React App docker container
+    ```bash
+    docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up gridiron-web -d
+    ```
+
+    You can visit the app at `http://localhost:3000`
+
 #### Clean Up
 
 You can easily clean up your local environment with the following...
