@@ -12,6 +12,10 @@ type UserPassDTO struct {
 	Password string `json:"password"`
 }
 
+type LoginResponseDTO struct {
+	AccessToken string `json:"access_token"`
+}
+
 // Entities
 
 type UserAccount struct {

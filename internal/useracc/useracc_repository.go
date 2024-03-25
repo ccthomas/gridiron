@@ -2,8 +2,10 @@ package useracc
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/ccthomas/gridiron/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type UserAccountRepositoryImpl struct {
@@ -52,11 +54,11 @@ func (r *UserAccountRepositoryImpl) SelectByUsername(username string) (*UserAcco
 	if err != nil {
 		if err == sql.ErrNoRows {
 			logger.Get().Debug("User account not found.")
-			return nil, nil // Return nil if no user account is found
+			return nil, fmt.Errorf("user account not found")
 		}
 		return nil, err
 	}
 
-	logger.Get().Debug("Found user account.")
+	logger.Get().Debug("Found user account.", zap.String("Username", userAccount.Username))
 	return &userAccount, nil
 }

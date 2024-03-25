@@ -36,6 +36,8 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
+	logger.Get().Debug("Find user by username.", zap.String("username", userPass.Username))
+
 	logger.Get().Debug("Generate id for user.")
 	id := uuid.New().String()
 
@@ -106,7 +108,6 @@ func (h *UserAccountHandlers) GetAuthorizerContextHandler(w http.ResponseWriter,
 }
 
 func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info("Login Handler hit.")
 	username, password, ok := r.BasicAuth()
 	if !ok {
 		logger.Get().Warn("Failed to get basic auth.")
@@ -117,8 +118,8 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 	logger.Get().Debug("Find user by username.", zap.String("username", username))
 	userAccount, err := h.UserAccountRepository.SelectByUsername(username)
 	if err != nil {
-		logger.Get().Warn("Username unknown.", zap.String("username", username))
-		http.Error(w, "Invalid username or password", http.StatusBadRequest)
+		logger.Get().Warn("Username unknown.")
+		myhttp.WriteError(w, http.StatusBadRequest, "Invalid username or password.")
 		return
 	}
 
@@ -126,7 +127,7 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 	match := CheckPasswordHash(password, userAccount.PasswordHash)
 	if !match {
 		logger.Get().Warn("Password does not match.")
-		http.Error(w, "Invalid username or password", http.StatusBadRequest)
+		myhttp.WriteError(w, http.StatusBadRequest, "Invalid username or password.")
 		return
 	}
 
@@ -148,13 +149,19 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	logger.Get().Debug("Construct response byte array.")
-	response := []byte(fmt.Sprintf(`{"access_token":"%s"}`, tokenString))
+	logger.Get().Debug("Construct response body.")
+	response := &LoginResponseDTO{
+		AccessToken: tokenString,
+	}
 
-	logger.Get().Debug("Set content-type header and write response.")
+	logger.Get().Debug("Encode response JSON and write to response.")
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logger.Get().Error("Failed to encode user account.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
+		return
+	}
 }
 
 func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *http.Request) error {
