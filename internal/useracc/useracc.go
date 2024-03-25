@@ -1,14 +1,18 @@
 package useracc
 
-type LoginData struct {
+// Data Transfer Objects
+
+type CreatedUserDTO struct {
+	Id       string `json:"id"`
+	Username string `json:"username"`
+}
+
+type UserPassDTO struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type CreatedUser struct {
-	Id       string `json:"id"`
-	Username string `json:"username"`
-}
+// Entities
 
 type UserAccount struct {
 	Id           string `json:"id"`
@@ -16,11 +20,13 @@ type UserAccount struct {
 	PasswordHash string `json:"password_hash"`
 }
 
-type UserAccountRepository interface {
-	InsertUserAccount(userAccount UserAccount) error
-	SelectByUsername(username string) (*UserAccount, error)
-}
+// Interfaces
 
 type UserAccountHandlers struct {
 	UserAccountRepository UserAccountRepository
+}
+
+type UserAccountRepository interface {
+	InsertUserAccount(userAccount UserAccount) error
+	SelectByUsername(username string) (*UserAccount, error)
 }

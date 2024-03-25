@@ -10,6 +10,7 @@ import (
 
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/logger"
+	"github.com/ccthomas/gridiron/pkg/myhttp"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -26,12 +27,12 @@ func NewHandlers(userAccountRepository UserAccountRepository) *UserAccountHandle
 func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info("Create New User Handler hit.")
 
-	var newUserData LoginData
+	var userPass UserPassDTO
 
 	logger.Get().Debug("Decode new user data.")
-	err := json.NewDecoder(r.Body).Decode(&newUserData)
+	err := json.NewDecoder(r.Body).Decode(&userPass)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		myhttp.WriteError(w, http.StatusBadRequest, "payload provided was invalid.")
 		return
 	}
 
@@ -39,17 +40,17 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	id := uuid.New().String()
 
 	logger.Get().Debug("Hash password.")
-	hashedPassword, err := HashPassword(newUserData.Password)
+	hashedPassword, err := HashPassword(userPass.Password)
 	if err != nil {
 		logger.Get().Error("Failed to hash password.")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 
 	logger.Get().Debug("Create a new user account struct.")
 	userAccount := UserAccount{
 		Id:           id,
-		Username:     newUserData.Username,
+		Username:     userPass.Username,
 		PasswordHash: hashedPassword,
 	}
 
@@ -57,14 +58,15 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	err = h.UserAccountRepository.InsertUserAccount(userAccount)
 	if err != nil {
 		logger.Get().Error("Failed to insert user account into db.")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// TODO Username taken
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 
 	logger.Get().Debug("Construct response body.")
-	response := &CreatedUser{
+	response := &CreatedUserDTO{
 		Id:       id,
-		Username: newUserData.Username,
+		Username: userPass.Username,
 	}
 
 	logger.Get().Debug("Encode response JSON and write to response.")
@@ -72,7 +74,7 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		logger.Get().Error("Failed to encode user account.")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 }
@@ -83,7 +85,7 @@ func (h *UserAccountHandlers) GetAuthorizerContextHandler(w http.ResponseWriter,
 	ctx, err := auth.GetAuthorizerContext(r)
 	if err != nil {
 		logger.Logger.Debug("Failed to get authorizer context from request")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 
@@ -93,7 +95,7 @@ func (h *UserAccountHandlers) GetAuthorizerContextHandler(w http.ResponseWriter,
 	err = json.NewEncoder(w).Encode(ctx)
 	if err != nil {
 		logger.Get().Error("Failed to encode authorizer context.")
-		http.Error(w, "Failed to get context from token.", http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 }
@@ -103,7 +105,7 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 	username, password, ok := r.BasicAuth()
 	if !ok {
 		logger.Get().Warn("Failed to get basic auth.")
-		http.Error(w, "Invalid username or password", http.StatusBadRequest)
+		myhttp.WriteError(w, http.StatusBadRequest, "Invalid username or password.")
 		return
 	}
 
@@ -137,7 +139,7 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		logger.Get().Error("Cannot sign token.", zap.Error(err))
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return
 	}
 
@@ -155,7 +157,7 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
+		myhttp.WriteError(w, http.StatusUnauthorized, "Authorization header is missing.")
 		return fmt.Errorf("authorization header is missing")
 	}
 
@@ -171,11 +173,13 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 
 	if err != nil {
 		logger.Get().Warn("Failed to parse token.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return err
 	}
 
 	if !token.Valid {
 		logger.Get().Warn("Token was invalid.")
+		myhttp.WriteError(w, http.StatusUnauthorized, "Authorization header is missing.")
 		return fmt.Errorf("token is not valid")
 	}
 
@@ -190,6 +194,7 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 
 	if err != nil {
 		logger.Get().Warn("Failed to encode context.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
 		return err
 	}
 

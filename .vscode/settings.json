@@ -1,6 +1,7 @@
 {
     "go.testEnvFile": "./.env",
     "cSpell.words": [
+        "myhttp",
         "useracc"
     ]
 }

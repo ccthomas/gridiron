@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ccthomas/gridiron/pkg/logger"
+	"github.com/ccthomas/gridiron/pkg/myhttp"
 )
 
 // NewHandlers initializes and returns a new Handlers instance
@@ -29,7 +30,7 @@ func (h *SystemHandlers) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Debug("JSON encode message.")
 	response, err := json.Marshal(message)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 
@@ -57,7 +58,7 @@ func (h *SystemHandlers) DatabaseHealthHandler(w http.ResponseWriter, r *http.Re
 	logger.Get().Debug("JSON encode message.")
 	response, err := json.Marshal(message)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 

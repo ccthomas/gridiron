@@ -7,6 +7,7 @@ import (
 	"github.com/ccthomas/gridiron/internal/system"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/logger"
+	"github.com/ccthomas/gridiron/pkg/myhttp"
 	"github.com/gorilla/mux"
 )
 
@@ -63,7 +64,7 @@ func (h *Handlers) tokenAuthorizer(next http.HandlerFunc) http.HandlerFunc {
 
 		if authHeader == "" {
 			logger.Get().Warn("Authorization header not provided.")
-			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
+			myhttp.WriteError(w, http.StatusUnauthorized, "Authorization header is missing.")
 			return
 		}
 
@@ -71,7 +72,7 @@ func (h *Handlers) tokenAuthorizer(next http.HandlerFunc) http.HandlerFunc {
 		err := h.UserAccountHandlers.TokenAuthorizerHandler(w, r)
 		if err != nil {
 			logger.Get().Warn("Is not authorizer")
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			myhttp.WriteError(w, http.StatusUnauthorized, "Invalid token.")
 			return
 		}
 
