@@ -4,8 +4,11 @@
 - [APIs](#apis)
 - [Environment](#environment)
 - [System](#system)
-    - [Contracts](#contracts)
+    - [Contracts](#system-contracts)
     - [Sequence Diagrams](#system-sequence-diagram)
+- [User Account](#user-account)
+    - [Contracts](#user-contracts)
+    - [Sequence Diagrams](#user-sequence-diagram)
 - [External Dependencies](#external-dependencies)
 
 
