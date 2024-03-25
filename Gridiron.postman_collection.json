@@ -54,12 +54,39 @@
 			"item": [
 				{
 					"name": "Create New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract username and password from request body",
+									"var requestBody = JSON.parse(pm.request.body.raw);",
+									"var username = requestBody.username;",
+									"var password = requestBody.password;",
+									"",
+									"// Save username and password as environment variables",
+									"pm.collectionVariables.set(\"username\", username);",
+									"pm.collectionVariables.set(\"password\", password);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"username\": \"{{username}}\",\n    \"password\": \"{{password}}\"\n}",
+							"raw": "{\n    \"username\": \"{{$randomUserName}}\",\n    \"password\": \"{{$randomPassword}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -89,7 +116,7 @@
 									"var responseBody = pm.response.json();",
 									"",
 									"// Save access token to a variable",
-									"pm.collectionVariables.set(\"accessToken\", responseBody.accessToken);",
+									"pm.collectionVariables.set(\"accessToken\", responseBody.access_token);",
 									""
 								],
 								"type": "text/javascript"
