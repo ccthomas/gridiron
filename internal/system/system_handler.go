@@ -46,7 +46,8 @@ func (h *SystemHandlers) DatabaseHealthHandler(w http.ResponseWriter, r *http.Re
 
 	err := h.DB.Ping()
 	if err != nil {
-		http.Error(w, "Failed to ping the database", http.StatusInternalServerError)
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
+		return
 	}
 
 	// Create a HealthMessage instance

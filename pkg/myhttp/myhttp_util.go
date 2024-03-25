@@ -12,7 +12,10 @@ import (
 func WriteError(w http.ResponseWriter, status int, message string) {
 	logger.Get().Debug("Write Error.")
 
-	var response []byte
+	logger.Get().Debug("Write api error.")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
 	err := json.NewEncoder(w).Encode(&ApiError{
 		Message:   message,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -23,9 +26,4 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-
-	logger.Get().Debug("Write api error.")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(response)
 }

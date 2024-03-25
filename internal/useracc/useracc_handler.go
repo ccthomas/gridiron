@@ -43,7 +43,7 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	hashedPassword, err := HashPassword(userPass.Password)
 	if err != nil {
 		logger.Get().Error("Failed to hash password.")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 
@@ -57,9 +57,14 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	logger.Get().Debug("Save user account.")
 	err = h.UserAccountRepository.InsertUserAccount(userAccount)
 	if err != nil {
-		logger.Get().Error("Failed to insert user account into db.")
-		// TODO Username taken
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		logger.Get().Error("Failed to insert user account into db.", zap.Error(err))
+
+		if err.Error() == "pq: duplicate key value violates unique constraint \"user_account_username_key\"" {
+			myhttp.WriteError(w, http.StatusBadRequest, "Username is taken.")
+			return
+		}
+
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 
@@ -74,7 +79,7 @@ func (h *UserAccountHandlers) CreateNewUserHandler(w http.ResponseWriter, r *htt
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		logger.Get().Error("Failed to encode user account.")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 }
@@ -85,7 +90,7 @@ func (h *UserAccountHandlers) GetAuthorizerContextHandler(w http.ResponseWriter,
 	ctx, err := auth.GetAuthorizerContext(r)
 	if err != nil {
 		logger.Logger.Debug("Failed to get authorizer context from request")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 
@@ -95,7 +100,7 @@ func (h *UserAccountHandlers) GetAuthorizerContextHandler(w http.ResponseWriter,
 	err = json.NewEncoder(w).Encode(ctx)
 	if err != nil {
 		logger.Get().Error("Failed to encode authorizer context.")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 }
@@ -139,12 +144,12 @@ func (h *UserAccountHandlers) LoginHandler(w http.ResponseWriter, r *http.Reques
 	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		logger.Get().Error("Cannot sign token.", zap.Error(err))
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 
 	logger.Get().Debug("Construct response byte array.")
-	response := []byte(fmt.Sprintf(`{"accessToken":"%s"}`, tokenString))
+	response := []byte(fmt.Sprintf(`{"access_token":"%s"}`, tokenString))
 
 	logger.Get().Debug("Set content-type header and write response.")
 	w.Header().Set("Content-Type", "application/json")
@@ -173,7 +178,7 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 
 	if err != nil {
 		logger.Get().Warn("Failed to parse token.")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return err
 	}
 
@@ -194,7 +199,7 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 
 	if err != nil {
 		logger.Get().Warn("Failed to encode context.")
-		myhttp.WriteError(w, http.StatusInternalServerError, "Internal server error occurred.")
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return err
 	}
 
