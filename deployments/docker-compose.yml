@@ -27,3 +27,12 @@ services:
       DB_NAME: $DB_NAME
       SECRET_KEY: $SECRET_KEY
       SERVER_PORT: 8080
+
+  gridiron-web:
+    build: 
+      context: ../
+      dockerfile: ./deployments/Dockerfile.web
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
