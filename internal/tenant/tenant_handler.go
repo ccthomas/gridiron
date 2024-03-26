@@ -85,7 +85,7 @@ func (h *TenantHandlers) NewTenantHandler(w http.ResponseWriter, r *http.Request
 	userAccess := TenantUserAccess{
 		UserAccountId: ctx.UserId,
 		TenantId:      tenant.Id,
-		AccessLevel:   Owner,
+		AccessLevel:   auth.Owner,
 	}
 
 	err = h.TenantRepository.InsertTenant(tenant)

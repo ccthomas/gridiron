@@ -1,10 +1,6 @@
 package tenant
 
-type AccessLevel string
-
-const (
-	Owner AccessLevel = "OWNER"
-)
+import "github.com/ccthomas/gridiron/pkg/auth"
 
 // Data Transfer Objects
 
@@ -21,9 +17,9 @@ type Tenant struct {
 }
 
 type TenantUserAccess struct {
-	TenantId      string      `json:"tenant_id"`
-	UserAccountId string      `json:"user_account_id"`
-	AccessLevel   AccessLevel `json:"access_level"`
+	TenantId      string           `json:"tenant_id"`
+	UserAccountId string           `json:"user_account_id"`
+	AccessLevel   auth.AccessLevel `json:"access_level"`
 }
 
 // Interfaces
@@ -36,4 +32,5 @@ type TenantRepository interface {
 	InsertTenant(tenant Tenant) error
 	InsertUserAccess(userAccess TenantUserAccess) error
 	SelectTenantByUser(userId string) ([]Tenant, error)
+	SelectTenantAccessByUser(userId string) ([]TenantUserAccess, error)
 }

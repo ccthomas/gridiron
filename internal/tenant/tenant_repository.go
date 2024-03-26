@@ -71,3 +71,32 @@ func (r *TenantRepositoryImpl) SelectTenantByUser(userId string) ([]Tenant, erro
 	logger.Get().Debug("Return tenants.")
 	return tenants, nil
 }
+
+func (r *TenantRepositoryImpl) SelectTenantAccessByUser(userId string) ([]TenantUserAccess, error) {
+	logger.Get().Debug("Select tenant user access by user id.")
+	rows, err := r.DB.Query("SELECT tenant_id, user_account_id, access_level FROM tenant.tenant_user_access WHERE user_account_id = $1", userId)
+
+	if err != nil {
+		logger.Get().Warn("Failed to select tenant user accesses by user.")
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	logger.Get().Debug("Start scanning rows.")
+	var tenantAccessArr []TenantUserAccess
+	for rows.Next() {
+		var userAccess TenantUserAccess
+		logger.Get().Debug("Scan next row.")
+		if err := rows.Scan(&userAccess.TenantId, &userAccess.UserAccountId, &userAccess.AccessLevel); err != nil {
+			logger.Get().Warn("Failed to scan row.")
+			return nil, err
+		}
+
+		logger.Get().Debug("Add tenant user access to tenant user access array.")
+		tenantAccessArr = append(tenantAccessArr, userAccess)
+	}
+
+	logger.Get().Debug("Return tenant user accesses.")
+	return tenantAccessArr, nil
+}

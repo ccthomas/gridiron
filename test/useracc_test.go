@@ -115,7 +115,7 @@ func TestCreateNewUser_UsernameTaken(t *testing.T) {
 	assertApiError(t, res.Body, "Username is taken.", startTime, endTime)
 }
 
-func TestLogin_WithAuthorizerContext(t *testing.T) {
+func TestLogin_WithAuthorizerContext_TenantAccessEmpty(t *testing.T) {
 	// Given - login
 	existing := createUser(t)
 
@@ -169,6 +169,67 @@ func TestLogin_WithAuthorizerContext(t *testing.T) {
 	}
 
 	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, 0, len(authCtx.TenantAccess), "Authorizer context tenant access is not empty")
+}
+
+func TestLogin_WithAuthorizerContext_TenantAccessNonEmpty(t *testing.T) {
+	// Given - login
+	existing := createUser(t)
+	tenant1 := createTenant(t, existing.Id, "Name")
+
+	reqLogin, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user/login", nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	reqLogin.SetBasicAuth(existing.Username, existing.Password)
+
+	// When - login
+	resLogin, err := http.DefaultClient.Do(reqLogin)
+
+	// Then - login
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	assert.Equal(t, http.StatusOK, resLogin.StatusCode, "Status code is not a 200")
+
+	var loginResponse useracc.LoginResponseDTO
+	err = json.NewDecoder(resLogin.Body).Decode(&loginResponse)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, loginResponse.AccessToken, "Access token is nil.")
+
+	// Given - Authorizer Token
+	reqAuth, err := http.NewRequest(http.MethodGet, "http://localhost:8080/user/authorizer-context", nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	reqAuth.Header.Set("Authorization", loginResponse.AccessToken)
+
+	// When - Authorizer Token
+	resAuth, err := http.DefaultClient.Do(reqAuth)
+
+	// Then - Authorizer Token
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	var authCtx auth.AuthorizerContext
+	err = json.NewDecoder(resAuth.Body).Decode(&authCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, map[string]auth.AccessLevel{
+		tenant1.Id: auth.Owner,
+	}, authCtx.TenantAccess, "Authorizer context tenant access is not empty")
 }
 
 func TestLogin_WrongPassword(t *testing.T) {

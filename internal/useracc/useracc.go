@@ -1,5 +1,7 @@
 package useracc
 
+import "github.com/ccthomas/gridiron/internal/tenant"
+
 // Data Transfer Objects
 
 type CreatedUserDTO struct {
@@ -27,6 +29,7 @@ type UserAccount struct {
 // Interfaces
 
 type UserAccountHandlers struct {
+	TenantRepository      tenant.TenantRepository
 	UserAccountRepository UserAccountRepository
 }
 

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/database"
 	"github.com/ccthomas/gridiron/pkg/logger"
@@ -123,6 +124,35 @@ func createUser(t *testing.T) UserAccountWithPass {
 
 	cleanUpUser(t, user.Id)
 	return user
+}
+
+func createTenant(t *testing.T, userId string, tenantName string) tenant.Tenant {
+	db := database.ConnectPostgres()
+
+	tenant := tenant.Tenant{
+		Id:   uuid.New().String(),
+		Name: tenantName,
+	}
+
+	_, err := db.Exec(
+		"INSERT INTO tenant.tenant (id, name) VALUES ($1, $2)",
+		tenant.Id, tenant.Name,
+	)
+	if err != nil {
+		t.Fatal("Failed to insert tenants as a part of setup.", err.Error())
+	}
+
+	cleanUpTenant(t, tenant.Id)
+
+	_, err = db.Exec(
+		"INSERT INTO tenant.tenant_user_access (tenant_id, user_account_id, access_level) VALUES ($1, $2, $3)",
+		tenant.Id, userId, "OWNER",
+	)
+	if err != nil {
+		t.Fatal("Failed to insert tenant user access as a part of setup.", err.Error())
+	}
+
+	return tenant
 }
 
 func login(t *testing.T) (UserAccountWithPass, useracc.LoginResponseDTO) {

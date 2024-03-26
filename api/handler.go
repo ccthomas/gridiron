@@ -25,7 +25,7 @@ func NewHandlers(db *sql.DB, tenantRepo tenant.TenantRepository, userRepo userac
 
 	systemHandlers := system.NewHandlers(db)
 	tenantHandlers := tenant.NewHandlers(tenantRepo)
-	userAccHandlers := useracc.NewHandlers(userRepo)
+	userAccHandlers := useracc.NewHandlers(tenantRepo, userRepo)
 
 	return &Handlers{
 		SystemHandlers:      systemHandlers,
@@ -82,8 +82,7 @@ func (h *Handlers) tokenAuthorizer(next http.HandlerFunc) http.HandlerFunc {
 		logger.Get().Debug("Authorize request.")
 		err := h.UserAccountHandlers.TokenAuthorizerHandler(w, r)
 		if err != nil {
-			logger.Get().Warn("Is not authorizer")
-			myhttp.WriteError(w, http.StatusUnauthorized, "Invalid token.")
+			logger.Get().Warn("Is not authorized.")
 			return
 		}
 

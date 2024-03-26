@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ccthomas/gridiron/internal/tenant"
+	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/database"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -81,54 +82,17 @@ func TestNewTenant(t *testing.T) {
 
 	assert.Equal(t, userAccess.TenantId, actual.Id, "User access tenant id is incorrect")
 	assert.Equal(t, userAccess.UserAccountId, existing.Id, "User access user account id is incorrect")
-	assert.Equal(t, userAccess.AccessLevel, tenant.Owner, "User access access level is incorrect")
+	assert.Equal(t, userAccess.AccessLevel, auth.Owner, "User access access level is incorrect")
 }
 
 func TestGetAllTenants(t *testing.T) {
 	// Given
-	db := database.ConnectPostgres()
 	existing, loginResp := login(t)
 	existingOther, _ := login(t)
 
-	id1 := uuid.New().String()
-	id2 := uuid.New().String()
-	id3 := uuid.New().String()
-	tenant1 := tenant.Tenant{
-		Id:   id1,
-		Name: fmt.Sprintf("NameA%s", id1),
-	}
-	tenant2 := tenant.Tenant{
-		Id:   id2,
-		Name: fmt.Sprintf("NameB%s", id2),
-	}
-	tenant3 := tenant.Tenant{
-		Id:   id3,
-		Name: fmt.Sprintf("NameC%s", id3),
-	}
-
-	_, err := db.Exec(
-		"INSERT INTO tenant.tenant (id, name) VALUES ($1, $2), ($3, $4), ($5, $6)",
-		tenant1.Id, tenant1.Name,
-		tenant2.Id, tenant2.Name,
-		tenant3.Id, tenant3.Name,
-	)
-	if err != nil {
-		t.Fatal("Failed to insert tenants as a part of setup.", err.Error())
-	}
-
-	cleanUpTenant(t, tenant1.Id)
-	cleanUpTenant(t, tenant2.Id)
-	cleanUpTenant(t, tenant3.Id)
-
-	_, err = db.Exec(
-		"INSERT INTO tenant.tenant_user_access (tenant_id, user_account_id, access_level) VALUES ($1, $2, $3), ($4, $5, $6), ($7, $8, $9)",
-		tenant1.Id, existing.Id, "OWNER",
-		tenant2.Id, existing.Id, "OWNER",
-		tenant3.Id, existingOther.Id, "OWNER",
-	)
-	if err != nil {
-		t.Fatal("Failed to insert tenant user access as a part of setup.", err.Error())
-	}
+	tenant1 := createTenant(t, existing.Id, "TestingA")
+	tenant2 := createTenant(t, existing.Id, "TestingB")
+	createTenant(t, existingOther.Id, "TestingFilteredOut") // tenant to be filtered out
 
 	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/tenant", nil)
 	if err != nil {
