@@ -13,73 +13,9 @@ import (
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/database"
-	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
-
-type UserAccountWithPass struct {
-	Id           string `json:"id"`
-	Username     string `json:"username"`
-	PasswordHash string `json:"password_hash"`
-	Password     string `json:"password"`
-}
-
-func cleanUp(t *testing.T, id string) {
-	t.Cleanup(func() {
-		logger.Get().Debug("Clean up user.", zap.String("ID", id))
-		db := database.ConnectPostgres()
-		defer db.Close()
-		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", id)
-		if err != nil {
-			logger.Get().Error("Failed to clean up user.")
-			t.Fatal(err.Error())
-		}
-	})
-}
-
-func createUser(t *testing.T) UserAccountWithPass {
-	db := database.ConnectPostgres()
-	defer db.Close()
-
-	id := uuid.New().String()
-	password := fmt.Sprintf("password%s", id)
-	passwordHash, _ := useracc.HashPassword(password)
-	user := UserAccountWithPass{
-		Id:           id,
-		Username:     fmt.Sprintf("TestCreateNewUser%s", id),
-		PasswordHash: passwordHash,
-		Password:     password,
-	}
-	_, err := db.Exec("INSERT INTO user_account.user_account (id, username, password_hash) VALUES ($1, $2, $3)", user.Id, user.Username, user.PasswordHash)
-	if err != nil {
-		t.Fatal("Failed to insert user as a part of setup.", err.Error())
-	}
-
-	cleanUp(t, user.Id)
-	return user
-}
-
-func TestMain(m *testing.M) {
-	// Load .env file
-	if err := godotenv.Load("../.env.offline"); err != nil {
-		fmt.Println("Error loading .env file:", err)
-	}
-
-	Logger := logger.Get()
-	defer Logger.Sync()
-
-	db := database.ConnectPostgres()
-	defer db.Close()
-
-	// Run tests
-	exitVal := m.Run()
-
-	// Exit with the same exit code as the tests
-	os.Exit(exitVal)
-}
 
 func TestCreateNewUser(t *testing.T) {
 	// Given
@@ -120,15 +56,7 @@ func TestCreateNewUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		db := database.ConnectPostgres()
-		defer db.Close()
-		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", createdUser.Id)
-		if err != nil {
-			logger.Get().Error("Failed to clean up user.")
-			t.Fatal(err.Error())
-		}
-	})
+	cleanUpUser(t, createdUser.Id)
 
 	rows, err := db.Query("SELECT * FROM user_account.user_account WHERE id = $1", createdUser.Id)
 	if err != nil {
@@ -187,7 +115,7 @@ func TestCreateNewUser_UsernameTaken(t *testing.T) {
 	assertApiError(t, res.Body, "Username is taken.", startTime, endTime)
 }
 
-func TestLogin_WithAuthorizerContext(t *testing.T) {
+func TestLogin_WithAuthorizerContext_TenantAccessEmpty(t *testing.T) {
 	// Given - login
 	existing := createUser(t)
 
@@ -241,6 +169,67 @@ func TestLogin_WithAuthorizerContext(t *testing.T) {
 	}
 
 	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, 0, len(authCtx.TenantAccess), "Authorizer context tenant access is not empty")
+}
+
+func TestLogin_WithAuthorizerContext_TenantAccessNonEmpty(t *testing.T) {
+	// Given - login
+	existing := createUser(t)
+	tenant1 := createTenant(t, existing.Id, "Name")
+
+	reqLogin, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user/login", nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	reqLogin.SetBasicAuth(existing.Username, existing.Password)
+
+	// When - login
+	resLogin, err := http.DefaultClient.Do(reqLogin)
+
+	// Then - login
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	assert.Equal(t, http.StatusOK, resLogin.StatusCode, "Status code is not a 200")
+
+	var loginResponse useracc.LoginResponseDTO
+	err = json.NewDecoder(resLogin.Body).Decode(&loginResponse)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, loginResponse.AccessToken, "Access token is nil.")
+
+	// Given - Authorizer Token
+	reqAuth, err := http.NewRequest(http.MethodGet, "http://localhost:8080/user/authorizer-context", nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	reqAuth.Header.Set("Authorization", loginResponse.AccessToken)
+
+	// When - Authorizer Token
+	resAuth, err := http.DefaultClient.Do(reqAuth)
+
+	// Then - Authorizer Token
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	var authCtx auth.AuthorizerContext
+	err = json.NewDecoder(resAuth.Body).Decode(&authCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, map[string]auth.AccessLevel{
+		tenant1.Id: auth.Owner,
+	}, authCtx.TenantAccess, "Authorizer context tenant access is not empty")
 }
 
 func TestLogin_WrongPassword(t *testing.T) {

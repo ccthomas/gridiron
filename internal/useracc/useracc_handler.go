@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/ccthomas/gridiron/pkg/myhttp"
@@ -17,9 +18,10 @@ import (
 )
 
 // NewHandlers initializes and returns a new Handlers instance
-func NewHandlers(userAccountRepository UserAccountRepository) *UserAccountHandlers {
+func NewHandlers(tenantRepository tenant.TenantRepository, userAccountRepository UserAccountRepository) *UserAccountHandlers {
 	logger.Get().Debug("Constructing user account handlers")
 	return &UserAccountHandlers{
+		TenantRepository:      tenantRepository,
 		UserAccountRepository: userAccountRepository,
 	}
 }
@@ -199,9 +201,23 @@ func (h *UserAccountHandlers) TokenAuthorizerHandler(w http.ResponseWriter, r *h
 	claims := token.Claims.(jwt.MapClaims)
 	id := claims["sub"].(string)
 
+	userAccess, err := h.TenantRepository.SelectTenantAccessByUser(id)
+	if err != nil {
+		logger.Logger.Error("Failed to select tenant user access by user.", zap.Error(err))
+		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
+		return err
+	}
+
+	// Create a map keyed by Tenant Id with the value of AccessLevel
+	accessMap := make(map[string]auth.AccessLevel)
+	for _, access := range userAccess {
+		accessMap[access.TenantId] = access.AccessLevel
+	}
+
 	logger.Get().Debug("JSON encode authorizer context")
 	b, err := json.Marshal(auth.AuthorizerContext{
-		UserId: id,
+		UserId:       id,
+		TenantAccess: accessMap,
 	})
 
 	if err != nil {

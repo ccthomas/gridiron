@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ccthomas/gridiron/api"
+	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/database"
 	gridironLogger "github.com/ccthomas/gridiron/pkg/logger"
@@ -24,12 +25,16 @@ func main() {
 	db := database.ConnectPostgres()
 	defer db.Close()
 
+	tenantRepo := &tenant.TenantRepositoryImpl{
+		DB: db,
+	}
+
 	userRepo := &useracc.UserAccountRepositoryImpl{
 		DB: db,
 	}
 
 	logger.Debug("Construct handlers.")
-	handler := api.NewHandlers(db, userRepo)
+	handler := api.NewHandlers(db, tenantRepo, userRepo)
 
 	logger.Debug("Construct router.")
 	r := mux.NewRouter()
