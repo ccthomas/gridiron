@@ -50,6 +50,66 @@
 			]
 		},
 		{
+			"name": "Tenant",
+			"item": [
+				{
+					"name": "Create New Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/tenant/{{$randomAbbreviation}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"tenant",
+								"{{$randomAbbreviation}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/tenant",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"tenant"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "User Account",
 			"item": [
 				{
