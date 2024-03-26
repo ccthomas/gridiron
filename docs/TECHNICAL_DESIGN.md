@@ -160,6 +160,10 @@ package useracc
         ```json
         {
           "id": "uuid",
+          "tenant_access": {
+            "tenant_id_1": "OWNER",
+            "tenant_id_2": "OWNER",
+          }
         }
         ```
 
