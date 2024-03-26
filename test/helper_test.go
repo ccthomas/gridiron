@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ccthomas/gridiron/internal/team"
 	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/database"
@@ -67,17 +68,17 @@ func assertApiError(t *testing.T, body io.ReadCloser, message string, startTime 
 	assert.NoError(t, err)
 	assert.True(t, parsedTime.Equal(startTime) || parsedTime.After(startTime), "timestamp is not after or equal to the start of the test.")
 	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
-
 }
 
-func cleanUpUser(t *testing.T, id string) {
+func cleanUpTeam(t *testing.T, id string) {
 	t.Cleanup(func() {
-		logger.Get().Debug("Clean up user.", zap.String("ID", id))
+		logger.Get().Debug("Clean up team.", zap.String("ID", id))
 		db := database.ConnectPostgres()
 		defer db.Close()
-		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", id)
+
+		_, err := db.Exec("DELETE FROM team.team WHERE team = $1", id)
 		if err != nil {
-			logger.Get().Error("Failed to clean up user.")
+			logger.Get().Error("Failed to clean up team.")
 			t.Fatal(err.Error())
 		}
 	})
@@ -104,26 +105,36 @@ func cleanUpTenant(t *testing.T, id string) {
 	})
 }
 
-func createUser(t *testing.T) UserAccountWithPass {
+func cleanUpUser(t *testing.T, id string) {
+	t.Cleanup(func() {
+		logger.Get().Debug("Clean up user.", zap.String("ID", id))
+		db := database.ConnectPostgres()
+		defer db.Close()
+		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", id)
+		if err != nil {
+			logger.Get().Error("Failed to clean up user.")
+			t.Fatal(err.Error())
+		}
+	})
+}
+
+func createTeam(t *testing.T, tenantId string, teamName string) team.Team {
 	db := database.ConnectPostgres()
 	defer db.Close()
 
-	id := uuid.New().String()
-	password := fmt.Sprintf("password%s", id)
-	passwordHash, _ := useracc.HashPassword(password)
-	user := UserAccountWithPass{
-		Id:           id,
-		Username:     fmt.Sprintf("TestCreateNewUser%s", id),
-		PasswordHash: passwordHash,
-		Password:     password,
-	}
-	_, err := db.Exec("INSERT INTO user_account.user_account (id, username, password_hash) VALUES ($1, $2, $3)", user.Id, user.Username, user.PasswordHash)
-	if err != nil {
-		t.Fatal("Failed to insert user as a part of setup.", err.Error())
+	myTeam := team.Team{
+		Id:       uuid.New().String(),
+		TenantId: tenantId,
+		Name:     teamName,
 	}
 
-	cleanUpUser(t, user.Id)
-	return user
+	_, err := db.Exec("INSERT INTO team.team (id, tenant_id, name) VALUES ($1, $2, $3)", myTeam.Id, myTeam.TenantId, myTeam.Name)
+	if err != nil {
+		t.Fatal("Failed to insert team as a part of setup.", err.Error())
+	}
+
+	cleanUpTeam(t, myTeam.Id)
+	return myTeam
 }
 
 func createTenant(t *testing.T, userId string, tenantName string) tenant.Tenant {
@@ -153,6 +164,28 @@ func createTenant(t *testing.T, userId string, tenantName string) tenant.Tenant 
 	}
 
 	return tenant
+}
+
+func createUser(t *testing.T) UserAccountWithPass {
+	db := database.ConnectPostgres()
+	defer db.Close()
+
+	id := uuid.New().String()
+	password := fmt.Sprintf("password%s", id)
+	passwordHash, _ := useracc.HashPassword(password)
+	user := UserAccountWithPass{
+		Id:           id,
+		Username:     fmt.Sprintf("TestCreateNewUser%s", id),
+		PasswordHash: passwordHash,
+		Password:     password,
+	}
+	_, err := db.Exec("INSERT INTO user_account.user_account (id, username, password_hash) VALUES ($1, $2, $3)", user.Id, user.Username, user.PasswordHash)
+	if err != nil {
+		t.Fatal("Failed to insert user as a part of setup.", err.Error())
+	}
+
+	cleanUpUser(t, user.Id)
+	return user
 }
 
 func login(t *testing.T) (UserAccountWithPass, useracc.LoginResponseDTO) {
