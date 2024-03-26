@@ -13,73 +13,9 @@ import (
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/database"
-	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
-
-type UserAccountWithPass struct {
-	Id           string `json:"id"`
-	Username     string `json:"username"`
-	PasswordHash string `json:"password_hash"`
-	Password     string `json:"password"`
-}
-
-func cleanUp(t *testing.T, id string) {
-	t.Cleanup(func() {
-		logger.Get().Debug("Clean up user.", zap.String("ID", id))
-		db := database.ConnectPostgres()
-		defer db.Close()
-		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", id)
-		if err != nil {
-			logger.Get().Error("Failed to clean up user.")
-			t.Fatal(err.Error())
-		}
-	})
-}
-
-func createUser(t *testing.T) UserAccountWithPass {
-	db := database.ConnectPostgres()
-	defer db.Close()
-
-	id := uuid.New().String()
-	password := fmt.Sprintf("password%s", id)
-	passwordHash, _ := useracc.HashPassword(password)
-	user := UserAccountWithPass{
-		Id:           id,
-		Username:     fmt.Sprintf("TestCreateNewUser%s", id),
-		PasswordHash: passwordHash,
-		Password:     password,
-	}
-	_, err := db.Exec("INSERT INTO user_account.user_account (id, username, password_hash) VALUES ($1, $2, $3)", user.Id, user.Username, user.PasswordHash)
-	if err != nil {
-		t.Fatal("Failed to insert user as a part of setup.", err.Error())
-	}
-
-	cleanUp(t, user.Id)
-	return user
-}
-
-func TestMain(m *testing.M) {
-	// Load .env file
-	if err := godotenv.Load("../.env.offline"); err != nil {
-		fmt.Println("Error loading .env file:", err)
-	}
-
-	Logger := logger.Get()
-	defer Logger.Sync()
-
-	db := database.ConnectPostgres()
-	defer db.Close()
-
-	// Run tests
-	exitVal := m.Run()
-
-	// Exit with the same exit code as the tests
-	os.Exit(exitVal)
-}
 
 func TestCreateNewUser(t *testing.T) {
 	// Given
@@ -120,15 +56,7 @@ func TestCreateNewUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		db := database.ConnectPostgres()
-		defer db.Close()
-		_, err := db.Exec("DELETE FROM user_account.user_account WHERE id = $1", createdUser.Id)
-		if err != nil {
-			logger.Get().Error("Failed to clean up user.")
-			t.Fatal(err.Error())
-		}
-	})
+	cleanUpUser(t, createdUser.Id)
 
 	rows, err := db.Query("SELECT * FROM user_account.user_account WHERE id = $1", createdUser.Id)
 	if err != nil {

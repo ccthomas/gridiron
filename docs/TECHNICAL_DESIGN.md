@@ -9,6 +9,9 @@
 - [User Account](#user-account)
     - [Contracts](#user-contracts)
     - [Sequence Diagrams](#user-sequence-diagram)
+- [Tenant](#tenant)
+    - [Contracts](#tenant-contracts)
+    - [Sequence Diagrams](#tenant-sequence-diagram)
 - [External Dependencies](#external-dependencies)
 
 
@@ -251,6 +254,105 @@ sequenceDiagram
     user account->>-server: Authorizer Context Response
 
     server->>-postman: API Response
+```
+
+## Tenant
+```go
+package tenant
+```
+
+* POST `/tenant/{name}`
+    * Request N/A
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "id": "uuid",
+          "name": ""
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* GET `/tenant`
+    * Request N/A
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "count": 1,
+          "data": [
+            {
+              "id": "uuid",
+              "name": ""
+            }
+          ]
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+## Tenant Contracts
+
+* Tenant
+    ```json
+    {
+        "id": "",
+        "name": ""
+    }
+    ```
+
+* Tenant User Access
+    ```json
+    {
+        "tenant_id": "",
+        "user_account_id": "",
+        "access_level": "OWNER"
+    }
+    ```
+
+### Tenant Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor postman
+    box gridiron-app
+    participant server
+    participant user account
+    participant tenant
+    end
+    postman->>+server: POST /tenant
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: New Tenant Handler
+    tenant->>database: Insert tenant
+    tenant->>-server: New Tenant Response
+    server->>-postman: API Response
+
+    postman->>+server: GET /tenant
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: Get All Tenants Handler
+    tenant->>database: SELECT for user with access
+    tenant->>-server: Get All Tenant Response
+    server->>-postman: API Response
+
 ```
 
 ## External Dependencies
