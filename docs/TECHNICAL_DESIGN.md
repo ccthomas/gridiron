@@ -5,13 +5,20 @@
 - [Environment](#environment)
 - [System](#system)
     - [Contracts](#system-contracts)
+    - [APIs](#system-apis)
     - [Sequence Diagrams](#system-sequence-diagram)
-- [User Account](#user-account)
-    - [Contracts](#user-contracts)
-    - [Sequence Diagrams](#user-sequence-diagram)
+- [Team](#team)
+    - [Contracts](#team-contracts)
+    - [APIs](#team-apis)
+    - [Sequence Diagrams](#team-sequence-diagram)
 - [Tenant](#tenant)
     - [Contracts](#tenant-contracts)
+    - [APIs](#tenant-apis)
     - [Sequence Diagrams](#tenant-sequence-diagram)
+- [User Account](#user-account)
+    - [Contracts](#user-contracts)
+    - [APIs](#user-apis)
+    - [Sequence Diagrams](#user-sequence-diagram)
 - [External Dependencies](#external-dependencies)
 
 
@@ -39,6 +46,18 @@ flowchart LR
 ```go
 package system
 ```
+
+### System Contracts
+
+* Health Message
+    ```json
+    {
+        "message": "",
+        "timestamp": "<time.RFC3339 as string>"
+    }
+    ```
+
+### System APIs
 
 * GET `/system/service/health`
     * Request N/A
@@ -80,16 +99,6 @@ package system
         }
         ```
 
-### System Contracts
-
-* Health Message
-    ```json
-    {
-        "message": "",
-        "timestamp": "<time.RFC3339 as string>"
-    }
-    ```
-
 ### System Sequence Diagram
 
 ```mermaid
@@ -111,10 +120,241 @@ sequenceDiagram
     server->>-postman: API Response
 ```
 
+## Team
+```go
+package team
+```
+
+### Team Contracts
+
+* Team
+    ```json
+    {
+        "id": "",
+        "tenant_id": "",
+        "name": ""
+    }
+    ```
+
+### Team APIs
+
+* POST `/team`
+    * Request 
+
+          Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+          Body
+          ```json
+          {
+            "name": "",
+          }
+          ```
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "id": "uuid",
+          "tenant_id": "uuid",
+          "name": ""
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* GET `/team`
+    * Request
+
+        Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "count": 1,
+          "data": [
+            {
+              "id": "uuid",
+              "tenant_id": "uuid",
+              "name": ""
+            }
+          ]
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+### Team Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor postman
+    box gridiron-app
+    participant server
+    participant user account
+    participant team
+    end
+    postman->>+server: POST /team
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: New Team Handler
+    tenant->>database: Insert team
+    tenant->>-server: New Team Response
+    server->>-postman: API Response
+
+    postman->>+server: GET /team
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: Get All Teams Handler
+    tenant->>database: SELECT for tenant_id
+    tenant->>-server: Get All Teams Response
+    server->>-postman: API Response
+
+```
+
+## Tenant
+```go
+package tenant
+```
+
+### Tenant Contracts
+
+* Tenant
+    ```json
+    {
+        "id": "",
+        "name": ""
+    }
+    ```
+
+* Tenant User Access
+    ```json
+    {
+        "tenant_id": "",
+        "user_account_id": "",
+        "access_level": "OWNER"
+    }
+    ```
+
+### Tenant APIs
+
+* POST `/tenant/{name}`
+    * Request N/A
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "id": "uuid",
+          "name": ""
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* GET `/tenant`
+    * Request N/A
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "count": 1,
+          "data": [
+            {
+              "id": "uuid",
+              "name": ""
+            }
+          ]
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+### Tenant Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor postman
+    box gridiron-app
+    participant server
+    participant user account
+    participant tenant
+    end
+    postman->>+server: POST /tenant
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: New Tenant Handler
+    tenant->>database: Insert tenant
+    tenant->>-server: New Tenant Response
+    server->>-postman: API Response
+
+    postman->>+server: GET /tenant
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+tenant: Get All Tenants Handler
+    tenant->>database: SELECT for user with access
+    tenant->>-server: Get All Tenant Response
+    server->>-postman: API Response
+
+```
+
 ## User Account
 ```go
 package useracc
 ```
+
+### User Contracts
+
+* Created User DTO
+    ```json
+    {
+        "id": "",
+        "username": ""
+    }
+    ```
+  
+* User Pass DTO
+    ```json
+    {
+        "username": "",
+        "password": ""
+    }
+    ```
+
+### User APIs
 
 * POST `/user`
     * Request
@@ -210,24 +450,6 @@ package useracc
         }
         ```
 
-### User Contracts
-
-* Created User DTO
-    ```json
-    {
-        "id": "",
-        "username": ""
-    }
-    ```
-  
-* User Pass DTO
-    ```json
-    {
-        "username": "",
-        "password": ""
-    }
-    ```
-
 ### User Sequence Diagram
 
 ```mermaid
@@ -258,105 +480,6 @@ sequenceDiagram
     user account->>-server: Authorizer Context Response
 
     server->>-postman: API Response
-```
-
-## Tenant
-```go
-package tenant
-```
-
-* POST `/tenant/{name}`
-    * Request N/A
-    * Response
-        
-        On success: 200
-        ```json
-        {
-          "id": "uuid",
-          "name": ""
-        }
-        ```
-
-        On Failure: 500
-        ```json
-        {
-          "message": "Internal Server Error.",
-          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
-        }
-        ```
-
-* GET `/tenant`
-    * Request N/A
-    * Response
-        
-        On success: 200
-        ```json
-        {
-          "count": 1,
-          "data": [
-            {
-              "id": "uuid",
-              "name": ""
-            }
-          ]
-        }
-        ```
-
-        On Failure: 500
-        ```json
-        {
-          "message": "Internal Server Error.",
-          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
-        }
-        ```
-
-## Tenant Contracts
-
-* Tenant
-    ```json
-    {
-        "id": "",
-        "name": ""
-    }
-    ```
-
-* Tenant User Access
-    ```json
-    {
-        "tenant_id": "",
-        "user_account_id": "",
-        "access_level": "OWNER"
-    }
-    ```
-
-### Tenant Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    actor postman
-    box gridiron-app
-    participant server
-    participant user account
-    participant tenant
-    end
-    postman->>+server: POST /tenant
-    server->>+user account: Token Authorizer Handler
-    user account->user account: Write Request context
-    user account->>-server: Response with Rejection or nil
-    server->>+tenant: New Tenant Handler
-    tenant->>database: Insert tenant
-    tenant->>-server: New Tenant Response
-    server->>-postman: API Response
-
-    postman->>+server: GET /tenant
-    server->>+user account: Token Authorizer Handler
-    user account->user account: Write Request context
-    user account->>-server: Response with Rejection or nil
-    server->>+tenant: Get All Tenants Handler
-    tenant->>database: SELECT for user with access
-    tenant->>-server: Get All Tenant Response
-    server->>-postman: API Response
-
 ```
 
 ## External Dependencies

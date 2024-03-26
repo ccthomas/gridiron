@@ -18,11 +18,6 @@ func NewHandlers(tenantRepository TenantRepository) *TenantHandlers {
 		TenantRepository: tenantRepository,
 	}
 }
-
-func (h *TenantHandlers) X(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info("X Handler hit.")
-}
-
 func (h *TenantHandlers) GetAllTenantsHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info("New Tenant Handler hit.")
 	ctx, err := auth.GetAuthorizerContext(r)
@@ -106,7 +101,7 @@ func (h *TenantHandlers) NewTenantHandler(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(tenant)
 	if err != nil {
-		logger.Get().Error("Failed to encode user account.")
+		logger.Get().Error("Failed to encode tenant.")
 		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
