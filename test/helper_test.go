@@ -76,7 +76,7 @@ func cleanUpTeam(t *testing.T, id string) {
 		db := database.ConnectPostgres()
 		defer db.Close()
 
-		_, err := db.Exec("DELETE FROM team.team WHERE team = $1", id)
+		_, err := db.Exec("DELETE FROM team.team WHERE id = $1", id)
 		if err != nil {
 			logger.Get().Error("Failed to clean up team.")
 			t.Fatal(err.Error())

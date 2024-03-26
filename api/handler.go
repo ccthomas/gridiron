@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ccthomas/gridiron/internal/system"
+	"github.com/ccthomas/gridiron/internal/team"
 	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/logger"
@@ -12,23 +13,29 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Handlers struct to hold dependencies for API handlers
 type Handlers struct {
 	SystemHandlers      *system.SystemHandlers
+	TeamHandlers        *team.TeamHandlers
 	TenantHandlers      *tenant.TenantHandlers
 	UserAccountHandlers *useracc.UserAccountHandlers
 }
 
-// NewHandlers initializes and returns a new Handlers instance
-func NewHandlers(db *sql.DB, tenantRepo tenant.TenantRepository, userRepo useracc.UserAccountRepository) *Handlers {
+func NewHandlers(
+	db *sql.DB,
+	teamRepo team.TeamRepository,
+	tenantRepo tenant.TenantRepository,
+	userRepo useracc.UserAccountRepository,
+) *Handlers {
 	logger.Get().Debug("Constructing new handlers")
 
 	systemHandlers := system.NewHandlers(db)
+	teamHandlers := team.NewHandlers(teamRepo)
 	tenantHandlers := tenant.NewHandlers(tenantRepo)
 	userAccHandlers := useracc.NewHandlers(tenantRepo, userRepo)
 
 	return &Handlers{
 		SystemHandlers:      systemHandlers,
+		TeamHandlers:        teamHandlers,
 		TenantHandlers:      tenantHandlers,
 		UserAccountHandlers: userAccHandlers,
 	}
@@ -37,6 +44,7 @@ func NewHandlers(db *sql.DB, tenantRepo tenant.TenantRepository, userRepo userac
 func (h *Handlers) RouteApis(r *mux.Router) {
 	logger.Get().Debug("Route apis")
 	h.routeSystemApis(r)
+	h.routeTeamApis(r)
 	h.routeTenantApis(r)
 	h.routeUserAccountApis(r)
 }
@@ -47,6 +55,14 @@ func (h *Handlers) routeSystemApis(r *mux.Router) {
 
 	systemRoutes.HandleFunc("/service/health", h.SystemHandlers.HealthHandler).Methods("GET")
 	systemRoutes.HandleFunc("/database/health", h.SystemHandlers.DatabaseHealthHandler).Methods("GET")
+}
+
+func (h *Handlers) routeTeamApis(r *mux.Router) {
+	logger.Get().Debug("Configuring team handler routes")
+	tenantRoutes := r.PathPrefix("/team").Subrouter()
+
+	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.CreateNewTeamHandler)).Methods("POST")
+	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.GetAllTeamsHandler)).Methods("GET")
 }
 
 func (h *Handlers) routeTenantApis(r *mux.Router) {
