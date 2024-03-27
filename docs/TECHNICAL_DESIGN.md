@@ -7,6 +7,11 @@
     - [Contracts](#system-contracts)
     - [APIs](#system-apis)
     - [Sequence Diagrams](#system-sequence-diagram)
+- [Person](#person)
+    - [Contracts](#person-contracts)
+    - [APIs](#person-apis)
+    - [Subscriptions](#person-subscriptions)
+    - [Sequence Diagrams](#person-sequence-diagram)
 - [Team](#team)
     - [Contracts](#team-contracts)
     - [APIs](#team-apis)
@@ -120,6 +125,229 @@ sequenceDiagram
     server->>+system: Database Health Handler
     system->>database: Ping
     system->>-server: Health Message Response
+    server->>-postman: API Response
+```
+
+## Person
+```go
+package person
+```
+
+### Person Contracts
+
+* Person
+    ```json
+    {
+        "id": "",
+        "tenant_id": "",
+        "name": ""
+    }
+    ```
+
+* Person Contract
+    ```json
+    {
+        "id": "",
+        "tenant_id": "",
+        "person_id": "",
+        "entity_id": "",
+        "entity_type": "TEAM",
+        "type": "ATHLETE | COACH | OWNER"
+    }
+    ```
+
+### Person APIs
+
+* POST `/person`
+    * Request 
+
+          Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+          Body
+          ```json
+          {
+            "name": "",
+          }
+          ```
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "id": "uuid",
+          "tenant_id": "uuid",
+          "name": ""
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* POST `/person/contract`
+    * Request 
+
+          Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+          Body
+          ```json
+          {
+            "person_id": "",
+            "entity_id": "",
+            "entity_type": "TEAM",
+            "type": "ATHLETE | COACH | OWNER",
+          }
+          ```
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "id": "uuid",
+          "person_id": "",
+          "entity_id": "",
+          "entity_type": "TEAM",
+          "type": "ATHLETE | COACH | OWNER",
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* GET `/person/contract/team/{teamId}`
+    * Request
+
+        Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "count": 1,
+          "data": [
+            {
+              "id": "uuid",
+              "tenant_id": "uuid",
+              "name": "",
+              "contract": {
+                  "id": "",
+                  "tenant_id": "",
+                  "person_id": "",
+                  "entity_id": "",
+                  "entity_type": "TEAM",
+                  "type": "ATHLETE | COACH | OWNER"
+              }
+            }
+          ]
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+* GET `/person/contract/type/{type}`
+    * Request
+
+        Header
+          * `x-tenant-id`: "tenant.tenant_id"
+
+    * Response
+        
+        On success: 200
+        ```json
+        {
+          "count": 1,
+          "data": [
+            {
+              "id": "uuid",
+              "tenant_id": "uuid",
+              "name": "",
+              "contract": {
+                  "id": "",
+                  "tenant_id": "",
+                  "person_id": "",
+                  "entity_id": "",
+                  "entity_type": "TEAM",
+                  "type": "ATHLETE | COACH | OWNER"
+              }
+            }
+          ]
+        }
+        ```
+
+        On Failure: 500
+        ```json
+        {
+          "message": "Internal Server Error.",
+          "timestamp": "<time.Now().UTC().Format(time.RFC3339)>"
+        }
+        ```
+
+### Person Subscriptions
+
+* `team-exchange`
+    * Key: "New Team"
+    * Data Version: 1.0.0
+    * Data
+        ```json
+        {
+          "id": "uuid",
+          "name": ""
+        }
+        ```
+
+### Person Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor postman
+    participant rabbitmq
+    box gridiron-app
+    participant server
+    participant user account
+    participant person
+    end
+
+    server->>rabbitmq: Consume "New Team" messages
+
+    rabbitmq-->server: "New Tenant" message received
+    server->>+person: Process New Team Message Handler
+    person->>-database: Insert default persons
+
+  
+    postman->>+server: POST /person
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>-postman: API Response
+
+    postman->>+server: GET /person
+    server->>+user account: Token Authorizer Handler
+    user account->user account: Write Request context
+    user account->>-server: Response with Rejection or nil
+    server->>+person: Get All Person Handler
+    team->>database: SELECT for tenant_id
+    team->>-server: Get All Teams Response
     server->>-postman: API Response
 ```
 
