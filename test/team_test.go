@@ -12,6 +12,8 @@ import (
 
 	"github.com/ccthomas/gridiron/internal/team"
 	"github.com/ccthomas/gridiron/internal/tenant"
+	"github.com/ccthomas/gridiron/pkg/database"
+	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/ccthomas/gridiron/pkg/myhttp"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +21,6 @@ import (
 
 func TestNewTeam(t *testing.T) {
 	// Given
-
 	u, loginRes := login(t)
 	tn := createTenant(t, u.Id, "TestTenantName")
 
@@ -214,11 +215,10 @@ func TestGetAllTeams_EmptyResponse(t *testing.T) {
 
 func TestGetAllTeams_MultipleTeams(t *testing.T) {
 	// Given
-
 	u, loginRes := login(t)
 	ten := createTenant(t, u.Id, fmt.Sprintf("TestTenant%s", u.Id))
-	createTeam(t, ten.Id, fmt.Sprintf("TestTeamA%s", ten.Id))
-	createTeam(t, ten.Id, fmt.Sprintf("TestTeamB%s", ten.Id))
+	tm1 := createTeam(t, ten.Id, fmt.Sprintf("TestTeamA%s", ten.Id))
+	tm2 := createTeam(t, ten.Id, fmt.Sprintf("TestTeamB%s", ten.Id))
 
 	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/team", nil)
 	if err != nil {
@@ -249,6 +249,65 @@ func TestGetAllTeams_MultipleTeams(t *testing.T) {
 
 	assert.Equal(t, 2, actual.Count, "count does not equal 2.")
 	assert.Equal(t, 2, len(actual.Data), "data count does not equal 2.")
-	// assert.Equal(t, tm1, actual.Data[0], "data does not equal first team.")
-	// assert.Equal(t, tm2, actual.Data[1], "data does not equal second team.")
+	assert.Equal(t, tm1, actual.Data[0], "data does not equal first team.")
+	assert.Equal(t, tm2, actual.Data[1], "data does not equal second team.")
+}
+
+func TestProcessNewTenantMessage(t *testing.T) {
+	// Given
+	db := database.ConnectPostgres()
+	_, loginResp := login(t)
+
+	unique := uuid.New().String()
+
+	url := fmt.Sprintf("http://localhost:8080/tenant/%s", unique)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	req.Header.Add("Authorization", loginResp.AccessToken)
+
+	// When
+	res, err := http.DefaultClient.Do(req)
+
+	// Then
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
+
+	var actual tenant.Tenant
+	err = json.NewDecoder(res.Body).Decode(&actual)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cleanUpTenant(t, actual.Id)
+	time.Sleep(6 * time.Second)
+
+	rows, err := db.Query("SELECT id, tenant_id, name FROM team.team WHERE tenant_id = $1", actual.Id)
+	if err != nil {
+		t.Fatal("Failed to prepare query.", err.Error())
+	}
+
+	var teams []team.Team
+	for rows.Next() {
+		var team team.Team
+		logger.Get().Debug("Scan next row.")
+		if err := rows.Scan(&team.Id, &team.TenantId, &team.Name); err != nil {
+			t.Fatal("Failed to scan row.")
+
+		}
+
+		teams = append(teams, team)
+	}
+
+	// TODO This can be improved by verifying configurations match what's in the db.
+	// Recommended solution would be to key each team by name in a map, then
+	// loop through the configs (by name) and verify every config is correct.
+
+	assert.Equal(t, 32, len(teams), "Teams is not of length 32.")
 }

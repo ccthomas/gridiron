@@ -90,7 +90,13 @@ func cleanUpTenant(t *testing.T, id string) {
 		db := database.ConnectPostgres()
 		defer db.Close()
 
-		_, err := db.Exec("DELETE FROM tenant.tenant_user_access WHERE tenant_id = $1", id)
+		_, err := db.Exec("DELETE FROM team.team WHERE tenant_id = $1", id)
+		if err != nil {
+			logger.Get().Error("Failed to clean up team.")
+			t.Fatal(err.Error())
+		}
+
+		_, err = db.Exec("DELETE FROM tenant.tenant_user_access WHERE tenant_id = $1", id)
 		if err != nil {
 			logger.Get().Error("Failed to clean up tenant.")
 			t.Fatal(err.Error())

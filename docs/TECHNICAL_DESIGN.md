@@ -10,6 +10,7 @@
 - [Team](#team)
     - [Contracts](#team-contracts)
     - [APIs](#team-apis)
+    - [Subscriptions](#team-subscriptions)
     - [Sequence Diagrams](#team-sequence-diagram)
 - [Tenant](#tenant)
     - [Contracts](#tenant-contracts)
@@ -202,6 +203,19 @@ package team
         }
         ```
 
+### Team Subscriptions
+
+* `tenant-exchange`
+    * Key: "New Tenant"
+    * Data Version: 1.0.0
+    * Data
+        ```json
+        {
+          "id": "uuid",
+          "name": ""
+        }
+        ```
+
 ### Team Sequence Diagram
 
 ```mermaid
@@ -216,25 +230,24 @@ sequenceDiagram
 
     server->>rabbitmq: Consume "New Tenant" messages
 
-    rabbitmq-->>server: "New Tenant" message received
-    server->>team: Process New Tenant Message Handler
+    rabbitmq-->server: "New Tenant" message received
+    server->>+team: Process New Tenant Message Handler
+    team->>-database: Insert default teams
+
   
     postman->>+server: POST /team
     server->>+user account: Token Authorizer Handler
     user account->user account: Write Request context
     user account->>-server: Response with Rejection or nil
-    server->>+tenant: New Team Handler
-    tenant->>database: Insert team
-    tenant->>-server: New Team Response
     server->>-postman: API Response
 
     postman->>+server: GET /team
     server->>+user account: Token Authorizer Handler
     user account->user account: Write Request context
     user account->>-server: Response with Rejection or nil
-    server->>+tenant: Get All Teams Handler
-    tenant->>database: SELECT for tenant_id
-    tenant->>-server: Get All Teams Response
+    server->>+team: Get All Teams Handler
+    team->>database: SELECT for tenant_id
+    team->>-server: Get All Teams Response
     server->>-postman: API Response
 ```
 
