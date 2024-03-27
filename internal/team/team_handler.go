@@ -7,13 +7,15 @@ import (
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/ccthomas/gridiron/pkg/myhttp"
+	"github.com/ccthomas/gridiron/pkg/rabbitmq"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-func NewHandlers(teamRepository TeamRepository) *TeamHandlers {
+func NewHandlers(rmq *rabbitmq.RabbitMqRouter, teamRepository TeamRepository) *TeamHandlers {
 	logger.Get().Debug("Constructing tenant handlers")
 	return &TeamHandlers{
+		RabbitMqRouter: rmq,
 		TeamRepository: teamRepository,
 	}
 }
@@ -101,4 +103,8 @@ func (h *TeamHandlers) GetAllTeamsHandler(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+}
+
+func (h *TeamHandlers) ProcessNewTenantMessageHandler(body rabbitmq.RabbitMqBody) {
+	logger.Get().Info("Process New Tenant Message handler", zap.Any("Body", body))
 }

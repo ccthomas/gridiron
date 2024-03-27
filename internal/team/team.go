@@ -1,5 +1,7 @@
 package team
 
+import "github.com/ccthomas/gridiron/pkg/rabbitmq"
+
 // Data Transfer Objects
 
 type CreateNewTeamDTO struct {
@@ -22,6 +24,7 @@ type Team struct {
 // Interfaces
 
 type TeamHandlers struct {
+	RabbitMqRouter *rabbitmq.RabbitMqRouter
 	TeamRepository TeamRepository
 }
 

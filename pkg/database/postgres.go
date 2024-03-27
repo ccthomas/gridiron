@@ -3,11 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/ccthomas/gridiron/pkg/logger"
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 func ConnectPostgres() *sql.DB {
@@ -25,7 +25,7 @@ func ConnectPostgres() *sql.DB {
 	logger.Get().Debug("Open a connection to the postgres database")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Error opening database connection:", err)
+		logger.Get().Fatal("Error opening database connection:", zap.Error(err))
 	}
 
 	logger.Get().Debug("Connection to postgres database was successful.")

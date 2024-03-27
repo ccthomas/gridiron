@@ -10,6 +10,7 @@ import (
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/ccthomas/gridiron/pkg/myhttp"
+	"github.com/ccthomas/gridiron/pkg/rabbitmq"
 	"github.com/gorilla/mux"
 )
 
@@ -22,6 +23,7 @@ type Handlers struct {
 
 func NewHandlers(
 	db *sql.DB,
+	rmq *rabbitmq.RabbitMqRouter,
 	teamRepo team.TeamRepository,
 	tenantRepo tenant.TenantRepository,
 	userRepo useracc.UserAccountRepository,
@@ -29,8 +31,8 @@ func NewHandlers(
 	logger.Get().Debug("Constructing new handlers")
 
 	systemHandlers := system.NewHandlers(db)
-	teamHandlers := team.NewHandlers(teamRepo)
-	tenantHandlers := tenant.NewHandlers(tenantRepo)
+	teamHandlers := team.NewHandlers(rmq, teamRepo)
+	tenantHandlers := tenant.NewHandlers(rmq, tenantRepo)
 	userAccHandlers := useracc.NewHandlers(tenantRepo, userRepo)
 
 	return &Handlers{
@@ -41,10 +43,10 @@ func NewHandlers(
 	}
 }
 
-func (h *Handlers) RouteApis(r *mux.Router) {
+func (h *Handlers) RouteApis(r *mux.Router, rmq *rabbitmq.RabbitMqRouter) {
 	logger.Get().Debug("Route apis")
 	h.routeSystemApis(r)
-	h.routeTeamApis(r)
+	h.routeTeamApis(r, rmq)
 	h.routeTenantApis(r)
 	h.routeUserAccountApis(r)
 }
@@ -57,12 +59,14 @@ func (h *Handlers) routeSystemApis(r *mux.Router) {
 	systemRoutes.HandleFunc("/database/health", h.SystemHandlers.DatabaseHealthHandler).Methods("GET")
 }
 
-func (h *Handlers) routeTeamApis(r *mux.Router) {
+func (h *Handlers) routeTeamApis(r *mux.Router, rmq *rabbitmq.RabbitMqRouter) {
 	logger.Get().Debug("Configuring team handler routes")
 	tenantRoutes := r.PathPrefix("/team").Subrouter()
 
 	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.CreateNewTeamHandler)).Methods("POST")
 	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.GetAllTeamsHandler)).Methods("GET")
+
+	rmq.HandleFunc("tenant-exchange", "New Tenant", h.TeamHandlers.ProcessNewTenantMessageHandler)
 }
 
 func (h *Handlers) routeTenantApis(r *mux.Router) {

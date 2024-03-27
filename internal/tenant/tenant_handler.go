@@ -7,17 +7,20 @@ import (
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/logger"
 	"github.com/ccthomas/gridiron/pkg/myhttp"
+	"github.com/ccthomas/gridiron/pkg/rabbitmq"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
-func NewHandlers(tenantRepository TenantRepository) *TenantHandlers {
+func NewHandlers(rmq *rabbitmq.RabbitMqRouter, tenantRepository TenantRepository) *TenantHandlers {
 	logger.Get().Debug("Constructing tenant handlers")
 	return &TenantHandlers{
+		RabbitMqRouter:   rmq,
 		TenantRepository: tenantRepository,
 	}
 }
+
 func (h *TenantHandlers) GetAllTenantsHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info("New Tenant Handler hit.")
 	ctx, err := auth.GetAuthorizerContext(r)
@@ -72,18 +75,18 @@ func (h *TenantHandlers) NewTenantHandler(w http.ResponseWriter, r *http.Request
 	logger.Get().Debug("Generate id for tenant.")
 	id := uuid.New().String()
 
-	tenant := Tenant{
+	t := Tenant{
 		Id:   id,
 		Name: name,
 	}
 
 	userAccess := TenantUserAccess{
 		UserAccountId: ctx.UserId,
-		TenantId:      tenant.Id,
+		TenantId:      t.Id,
 		AccessLevel:   auth.Owner,
 	}
 
-	err = h.TenantRepository.InsertTenant(tenant)
+	err = h.TenantRepository.InsertTenant(t)
 	if err != nil {
 		logger.Get().Error("Failed to insert tenant.", zap.Error(err))
 		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
@@ -97,9 +100,18 @@ func (h *TenantHandlers) NewTenantHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	logger.Get().Debug("Publish new tenant message.")
+	h.RabbitMqRouter.PublishMessage("tenant-exchange", "New Tenant", []rabbitmq.RabbitMqBody{
+		{
+			BodyType:    "New Tenant",
+			BodyVersion: "1.0.0",
+			Data:        t,
+		},
+	})
+
 	logger.Get().Debug("Encode response JSON and write to response.")
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(tenant)
+	err = json.NewEncoder(w).Encode(t)
 	if err != nil {
 		logger.Get().Error("Failed to encode tenant.")
 		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
