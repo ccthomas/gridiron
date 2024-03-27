@@ -8,6 +8,13 @@
 
 ### Offline - Locally
 
+1. Configure Rabbit MQ
+
+    Start docker container running Rabbit MQ local.
+    ```bash
+    docker compose --env-file ./.env.offline -f ./deployments/docker-compose.yml up gridiron-rabbitmq -d
+    ```
+
 1. Configure Database
 
     Start docker container running Postgres local.
