@@ -3,6 +3,7 @@ package tenant
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/logger"
@@ -101,10 +102,9 @@ func (h *TenantHandlers) NewTenantHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	logger.Get().Debug("Publish new tenant message.")
-	h.RabbitMqRouter.PublishMessage("tenant-exchange", "New Tenant", []rabbitmq.RabbitMqBody{
+	h.RabbitMqRouter.PublishMessage(os.Getenv("RABBITMQ_EXCHANGE_TENANT"), "New Tenant", []rabbitmq.RabbitMqBody{
 		{
-			BodyType:    "New Tenant",
-			BodyVersion: "1.0.0",
+			DataVersion: "1.0.0",
 			Data:        t,
 		},
 	})

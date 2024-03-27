@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"os"
 
 	"github.com/ccthomas/gridiron/internal/system"
 	"github.com/ccthomas/gridiron/internal/team"
@@ -66,7 +67,7 @@ func (h *Handlers) routeTeamApis(r *mux.Router, rmq *rabbitmq.RabbitMqRouter) {
 	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.CreateNewTeamHandler)).Methods("POST")
 	tenantRoutes.HandleFunc("", h.tokenAuthorizer(h.TeamHandlers.GetAllTeamsHandler)).Methods("GET")
 
-	rmq.HandleFunc("tenant-exchange", "New Tenant", h.TeamHandlers.ProcessNewTenantMessageHandler)
+	rmq.HandleFunc(os.Getenv("RABBITMQ_EXCHANGE_TENANT"), "New Tenant", h.TeamHandlers.ProcessNewTenantMessageHandler)
 }
 
 func (h *Handlers) routeTenantApis(r *mux.Router) {
