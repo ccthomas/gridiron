@@ -85,6 +85,76 @@ func TestNewTenant(t *testing.T) {
 	assert.Equal(t, userAccess.AccessLevel, auth.Owner, "User access access level is incorrect")
 }
 
+func TestNewTenant_ConfigurationNFL(t *testing.T) {
+	// Given
+	db := database.ConnectPostgres()
+	existing, loginResp := login(t)
+
+	unique := uuid.New().String()
+
+	url := fmt.Sprintf("http://localhost:8080/tenant/%s", unique)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	req.Header.Add("Authorization", loginResp.AccessToken)
+
+	// When
+	res, err := http.DefaultClient.Do(req)
+
+	// Then
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
+
+	var actual tenant.Tenant
+	err = json.NewDecoder(res.Body).Decode(&actual)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cleanUpTenant(t, actual.Id)
+
+	rows, err := db.Query("SELECT * FROM tenant.tenant WHERE id = $1", actual.Id)
+	if err != nil {
+		t.Fatal("Failed to prepare query.", err.Error())
+	}
+
+	defer rows.Close()
+	rows.Next()
+
+	var expected tenant.Tenant
+	err = rows.Scan(&expected.Id, &expected.Name)
+	if err != nil {
+		t.Fatal("User was not created.", err.Error())
+	}
+
+	assert.Equal(t, expected.Id, actual.Id, "tenant id id is incorrect")
+	assert.Equal(t, expected.Name, actual.Name, "tenant name is incorrect")
+
+	rows, err = db.Query("SELECT * FROM tenant.tenant_user_access WHERE tenant_id = $1", actual.Id)
+	if err != nil {
+		t.Fatal("Failed to prepare query.", err.Error())
+	}
+
+	defer rows.Close()
+	rows.Next()
+
+	var userAccess tenant.TenantUserAccess
+	err = rows.Scan(&userAccess.TenantId, &userAccess.UserAccountId, &userAccess.AccessLevel)
+	if err != nil {
+		t.Fatal("User was not created.", err.Error())
+	}
+
+	assert.Equal(t, userAccess.TenantId, actual.Id, "User access tenant id is incorrect")
+	assert.Equal(t, userAccess.UserAccountId, existing.Id, "User access user account id is incorrect")
+	assert.Equal(t, userAccess.AccessLevel, auth.Owner, "User access access level is incorrect")
+}
+
 func TestGetAllTenants(t *testing.T) {
 	// Given
 	existing, loginResp := login(t)

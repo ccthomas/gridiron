@@ -53,7 +53,7 @@ func (h *TeamHandlers) CreateNewTeamHandler(w http.ResponseWriter, r *http.Reque
 		Name:     dto.Name,
 	}
 
-	err = h.TeamRepository.InsertTeam(t)
+	err = h.TeamRepository.InsertTeams([]Team{t})
 	if err != nil {
 		logger.Get().Error("Failed to insert team.", zap.Error(err))
 		myhttp.WriteError(w, http.StatusInternalServerError, "Internal Server Error.")
@@ -107,4 +107,28 @@ func (h *TeamHandlers) GetAllTeamsHandler(w http.ResponseWriter, r *http.Request
 
 func (h *TeamHandlers) ProcessNewTenantMessageHandler(body rabbitmq.RabbitMqBody) {
 	logger.Get().Info("Process New Tenant Message handler", zap.Any("Body", body))
+
+	if body.DataVersion != "1.0.0" {
+		logger.Get().Fatal("Only supports 1.0.0 of data event.")
+	}
+
+	tenantId := body.Data.(map[string]interface{})["id"].(string)
+
+	teams := []Team{}
+	for _, config := range nflConfig {
+		t := Team{
+			Id:       uuid.New().String(),
+			TenantId: tenantId,
+			Name:     config.Name,
+		}
+
+		teams = append(teams, t)
+	}
+
+	err := h.TeamRepository.InsertTeams(teams)
+	if err != nil {
+		logger.Get().Error("Failed to insert teams.", zap.Error(err))
+		return
+	}
+	logger.Get().Debug("Successfully inserted teams for tenant.")
 }

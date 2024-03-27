@@ -10,9 +10,8 @@ import (
 )
 
 type RabbitMqBody struct {
-	BodyType    string
-	BodyVersion string
-	Data        any
+	DataVersion string `json:"data_version"`
+	Data        any    `json:"data"`
 }
 
 type RabbitMqRouter struct {

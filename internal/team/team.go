@@ -29,6 +29,6 @@ type TeamHandlers struct {
 }
 
 type TeamRepository interface {
-	InsertTeam(team Team) error
+	InsertTeams(teams []Team) error
 	SelectAllTeamsByTenant(tenantId string) ([]Team, error)
 }
