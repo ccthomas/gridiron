@@ -1,6 +1,9 @@
 package tenant
 
-import "github.com/ccthomas/gridiron/pkg/auth"
+import (
+	"github.com/ccthomas/gridiron/pkg/auth"
+	"github.com/ccthomas/gridiron/pkg/rabbitmq"
+)
 
 // Data Transfer Objects
 
@@ -25,6 +28,7 @@ type TenantUserAccess struct {
 // Interfaces
 
 type TenantHandlers struct {
+	RabbitMqRouter   *rabbitmq.RabbitMqRouter
 	TenantRepository TenantRepository
 }
 

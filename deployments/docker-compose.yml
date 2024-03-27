@@ -11,6 +11,19 @@ services:
       POSTGRES_USER: $DB_USER
       POSTGRES_PASSWORD: $DB_PASSWORD
 
+  gridiron-rabbitmq:
+    container_name: gridiron-rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672" # RabbitMQ main port
+      - "15672:15672" # RabbitMQ management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: $RABBITMQ_USER
+      RABBITMQ_DEFAULT_PASS: $RABBITMQ_PASSWORD
+    volumes:
+        - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+        - ./rabbitmq.config:/etc/rabbitmq/rabbitmq.config
+
   gridiron-service:
     container_name: gridiron-service
     build:
@@ -25,6 +38,9 @@ services:
       DB_USER: $DB_USER
       DB_PASSWORD: $DB_PASSWORD
       DB_NAME: $DB_NAME
+      RABBITMQ_HOST: $RABBITMQ_HOST_CONTAINER
+      RABBITMQ_USER: $RABBITMQ_USER
+      RABBITMQ_PASSWORD: $RABBITMQ_PASSWORD
       SECRET_KEY: $SECRET_KEY
       SERVER_PORT: 8080
 

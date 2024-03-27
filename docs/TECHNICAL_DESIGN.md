@@ -37,9 +37,11 @@ flowchart LR
     direction TB
     gridiron-app
     gridiron-db
+    gridiron-rabbitmq
   end
   Postman <--> gridiron-app
   gridiron-app <--> gridiron-db
+  gridiron-app <--> gridiron-rabbitmq
 ```
 
 ## System
@@ -205,11 +207,18 @@ package team
 ```mermaid
 sequenceDiagram
     actor postman
+    participant rabbitmq
     box gridiron-app
     participant server
     participant user account
     participant team
     end
+
+    server->>rabbitmq: Consume "New Tenant" messages
+
+    rabbitmq-->>server: "New Tenant" message received
+    server->>team: Process New Tenant Message Handler
+  
     postman->>+server: POST /team
     server->>+user account: Token Authorizer Handler
     user account->user account: Write Request context
@@ -227,7 +236,6 @@ sequenceDiagram
     tenant->>database: SELECT for tenant_id
     tenant->>-server: Get All Teams Response
     server->>-postman: API Response
-
 ```
 
 ## Tenant
@@ -311,12 +319,14 @@ sequenceDiagram
     participant user account
     participant tenant
     end
+  
     postman->>+server: POST /tenant
     server->>+user account: Token Authorizer Handler
     user account->user account: Write Request context
     user account->>-server: Response with Rejection or nil
     server->>+tenant: New Tenant Handler
     tenant->>database: Insert tenant
+    tenant->>rabbitmq: Publish "New Tenant" message
     tenant->>-server: New Tenant Response
     server->>-postman: API Response
 
