@@ -1,88 +1,55 @@
 package test
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/ccthomas/gridiron/internal/system"
+	"github.com/ccthomas/gridiron/pkg/myhttp"
 	"github.com/stretchr/testify/assert"
 )
 
+// myhttp.ApiError has the same structure as system.HealthMessage.
+// we will re-use the functions for api error to test health messages.
+
 func TestSystemServiceHealth(t *testing.T) {
-	// Given
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/system/service/health", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
 
 	// When
+
 	startTime := time.Now().UTC()
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[myhttp.ApiError](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/system/service/health",
+		nil,
+		"",
+		"",
+	)
 	endTime := time.Now().UTC()
 
 	// Then
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	var healthResponse system.HealthMessage
-	err = json.NewDecoder(res.Body).Decode(&healthResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, "Gridiron Service is Healthy", healthResponse.Message)
-
-	parsedTime, err := time.Parse(time.RFC3339, healthResponse.Timestamp)
-	startTime = startTime.Truncate(time.Second)
-	endTime = endTime.Truncate(time.Second)
-
-	assert.NoError(t, err)
-	assert.True(t, parsedTime.Equal(startTime) || parsedTime.After(startTime), "timestamp is not after or equal to the start of the test.")
-	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
+	assertApiError(t, actual, "Gridiron Service is Healthy", startTime, endTime)
 }
 
 func TestSystemDatabaseHealth(t *testing.T) {
-	// Given
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/system/database/health", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
 
 	// When
+
 	startTime := time.Now().UTC()
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[myhttp.ApiError](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/system/database/health",
+		nil,
+		"",
+		"",
+	)
 	endTime := time.Now().UTC()
 
 	// Then
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	var healthResponse system.HealthMessage
-	err = json.NewDecoder(res.Body).Decode(&healthResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, "Gridiron has a healthy connection to the database.", healthResponse.Message)
-
-	parsedTime, err := time.Parse(time.RFC3339, healthResponse.Timestamp)
-	startTime = startTime.Truncate(time.Second)
-	endTime = endTime.Truncate(time.Second)
-
-	assert.NoError(t, err)
-	assert.True(t, parsedTime.Equal(startTime) || parsedTime.After(startTime), "timestamp is not after or equal to the start of the test.")
-	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
+	assertApiError(t, actual, "Gridiron has a healthy connection to the database.", startTime, endTime)
 }

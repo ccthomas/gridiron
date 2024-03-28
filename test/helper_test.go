@@ -4,9 +4,9 @@ package test
 // Failed named with _test.go to allow MainTest to execute.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -52,16 +52,65 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func assertApiError(t *testing.T, body io.ReadCloser, message string, startTime time.Time, endTime time.Time) {
-	var apiErr myhttp.ApiError
-	err := json.NewDecoder(body).Decode(&apiErr)
+func sendApiReq[K any](
+	t *testing.T,
+	method string,
+	url string,
+	body any,
+	auth string,
+	tenantId string,
+) (*http.Response, K) {
+	var req *http.Request
+	var err error
+
+	if body == nil {
+		req, err = http.NewRequest(method, url, nil)
+		if err != nil {
+			t.Fatal("Failed to construct request", err.Error())
+		}
+	} else {
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			fmt.Printf("could not marshal userPass: %s\n", err)
+			os.Exit(1)
+		}
+
+		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+		if err != nil {
+			t.Fatal("Failed to construct request", err.Error())
+		}
+	}
+
+	if auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
+	if auth != "" {
+		req.Header.Set("x-tenant-id", tenantId)
+	}
+
+	// req.Close = true
+
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
+		t.Fatal("Apu request failed.", err.Error())
+	}
+
+	// defer res.Body.Close()
+
+	var actual K
+	err = json.NewDecoder(res.Body).Decode(&actual)
+	if err != nil {
+		logger.Get().Fatal("Failed decoded body", zap.String("url", url), zap.Error(err))
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, message, apiErr.Message)
+	return res, actual
+}
 
-	parsedTime, err := time.Parse(time.RFC3339, apiErr.Timestamp)
+func assertApiError(t *testing.T, body myhttp.ApiError, message string, startTime time.Time, endTime time.Time) {
+	assert.Equal(t, message, body.Message)
+
+	parsedTime, err := time.Parse(time.RFC3339, body.Timestamp)
 	startTime = startTime.Truncate(time.Second)
 	endTime = endTime.Truncate(time.Second)
 
@@ -86,6 +135,10 @@ func cleanUpTeam(t *testing.T, id string) {
 
 func cleanUpTenant(t *testing.T, id string) {
 	t.Cleanup(func() {
+		// provide time for for async
+		// rabbitmq messages to be processed.
+		time.Sleep(2 * time.Second)
+
 		logger.Get().Debug("Clean up tenant.", zap.String("ID", id))
 		db := database.ConnectPostgres()
 		defer db.Close()
