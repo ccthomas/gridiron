@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ccthomas/gridiron/internal/person"
 	"github.com/ccthomas/gridiron/internal/team"
 	"github.com/ccthomas/gridiron/internal/tenant"
 	"github.com/ccthomas/gridiron/internal/useracc"
@@ -119,20 +120,6 @@ func assertApiError(t *testing.T, body myhttp.ApiError, message string, startTim
 	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
 }
 
-func cleanUpTeam(t *testing.T, id string) {
-	t.Cleanup(func() {
-		logger.Get().Debug("Clean up team.", zap.String("ID", id))
-		db := database.ConnectPostgres()
-		defer db.Close()
-
-		_, err := db.Exec("DELETE FROM team.team WHERE id = $1", id)
-		if err != nil {
-			logger.Get().Error("Failed to clean up team.")
-			t.Fatal(err.Error())
-		}
-	})
-}
-
 func cleanUpTenant(t *testing.T, id string) {
 	t.Cleanup(func() {
 		// provide time for for async
@@ -143,7 +130,19 @@ func cleanUpTenant(t *testing.T, id string) {
 		db := database.ConnectPostgres()
 		defer db.Close()
 
-		_, err := db.Exec("DELETE FROM team.team WHERE tenant_id = $1", id)
+		_, err := db.Exec("DELETE FROM person.person_contract WHERE tenant_id = $1", id)
+		if err != nil {
+			logger.Get().Error("Failed to clean up person.")
+			t.Fatal(err.Error())
+		}
+
+		_, err = db.Exec("DELETE FROM person.person WHERE tenant_id = $1", id)
+		if err != nil {
+			logger.Get().Error("Failed to clean up person.")
+			t.Fatal(err.Error())
+		}
+
+		_, err = db.Exec("DELETE FROM team.team WHERE tenant_id = $1", id)
 		if err != nil {
 			logger.Get().Error("Failed to clean up team.")
 			t.Fatal(err.Error())
@@ -177,6 +176,51 @@ func cleanUpUser(t *testing.T, id string) {
 	})
 }
 
+func createPerson(t *testing.T, tenantId string, personName string) person.Person {
+	db := database.ConnectPostgres()
+	defer db.Close()
+
+	p := person.Person{
+		Id:       uuid.New().String(),
+		TenantId: tenantId,
+		Name:     personName,
+	}
+
+	_, err := db.Exec("INSERT INTO person.person (id, tenant_id, name) VALUES ($1, $2, $3)", p.Id, p.TenantId, p.Name)
+	if err != nil {
+		t.Fatal("Failed to insert team as a part of setup.", err.Error())
+	}
+
+	cleanUpTenant(t, tenantId)
+	return p
+}
+
+func createPersonContract(t *testing.T, tenantId string, dto person.CreateNewPersonContractDTO) person.PersonContract {
+	db := database.ConnectPostgres()
+	defer db.Close()
+
+	pc := person.PersonContract{
+		Id:         uuid.New().String(),
+		TenantId:   tenantId,
+		PersonId:   dto.PersonId,
+		EntityId:   dto.EntityId,
+		EntityType: dto.EntityType,
+		Type:       dto.Type,
+	}
+
+	_, err := db.Exec(
+		"INSERT INTO person.person_contract (id, tenant_id, person_id, entity_id, entity_type, type) VALUES ($1, $2, $3, $4, $5, $6)",
+		pc.Id, pc.TenantId, pc.PersonId, pc.EntityId, pc.EntityType, pc.Type,
+	)
+
+	if err != nil {
+		t.Fatal("Failed to insert team as a part of setup.", err.Error())
+	}
+
+	cleanUpTenant(t, tenantId)
+	return pc
+}
+
 func createTeam(t *testing.T, tenantId string, teamName string) team.Team {
 	db := database.ConnectPostgres()
 	defer db.Close()
@@ -192,7 +236,7 @@ func createTeam(t *testing.T, tenantId string, teamName string) team.Team {
 		t.Fatal("Failed to insert team as a part of setup.", err.Error())
 	}
 
-	cleanUpTeam(t, myTeam.Id)
+	cleanUpTenant(t, tenantId)
 	return myTeam
 }
 

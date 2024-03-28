@@ -40,12 +40,9 @@ func TestNewTeam(t *testing.T) {
 	// Then
 
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
-
-	cleanUpTeam(t, actual.Id)
-
 	assert.NotNil(t, actual.Id, "Actual id is not nil.")
 	assert.Equal(t, actual.Name, dto.Name, "Actual name is incorrect.")
-	assert.Equal(t, actual.TenantId, tn.Id, "Actual name is incorrect.")
+	assert.Equal(t, actual.TenantId, tn.Id, "Actual tenant id is incorrect.")
 }
 
 func TestNewTeam_NoTenantId(t *testing.T) {
