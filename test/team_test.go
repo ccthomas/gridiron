@@ -1,12 +1,8 @@
 package test
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -21,6 +17,7 @@ import (
 
 func TestNewTeam(t *testing.T) {
 	// Given
+
 	u, loginRes := login(t)
 	tn := createTenant(t, u.Id, "TestTenantName")
 
@@ -29,38 +26,20 @@ func TestNewTeam(t *testing.T) {
 		Name: fmt.Sprintf("TestTeamName%s", unique),
 	}
 
-	jsonData, err := json.Marshal(dto)
-	if err != nil {
-		fmt.Printf("could not marshal userPass: %s\n", err)
-		os.Exit(1)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/team", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginRes.AccessToken)
-	req.Header.Add("x-tenant-id", tn.Id)
-
 	// When
 
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[team.Team](
+		t,
+		http.MethodPost,
+		"http://localhost:8080/team",
+		dto,
+		loginRes.AccessToken,
+		tn.Id,
+	)
 
 	// Then
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
-
-	var actual team.Team
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	cleanUpTeam(t, actual.Id)
 
@@ -79,48 +58,23 @@ func TestNewTeam_NoTenantId(t *testing.T) {
 		Name: fmt.Sprintf("TestTeamName%s", unique),
 	}
 
-	jsonData, err := json.Marshal(dto)
-	if err != nil {
-		fmt.Printf("could not marshal userPass: %s\n", err)
-		os.Exit(1)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/team", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginRes.AccessToken)
-
 	// When
 
 	startTime := time.Now().UTC()
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[myhttp.ApiError](
+		t,
+		http.MethodPost,
+		"http://localhost:8080/team",
+		dto,
+		loginRes.AccessToken,
+		"",
+	)
 	endTime := time.Now().UTC()
 
 	// Then
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode, "Status code is not a 401")
-
-	var actual myhttp.ApiError
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, "User is unauthorized to access tenant.", actual.Message)
-	parsedTime, err := time.Parse(time.RFC3339, actual.Timestamp)
-	startTime = startTime.Truncate(time.Second)
-	endTime = endTime.Truncate(time.Second)
-
-	assert.NoError(t, err)
-	assert.True(t, parsedTime.Equal(startTime) || parsedTime.After(startTime), "timestamp is not after or equal to the start of the test.")
-	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
+	assertApiError(t, actual, "User is unauthorized to access tenant.", startTime, endTime)
 }
 
 func TestNewTeam_DoesNotHaveAccessTenant(t *testing.T) {
@@ -133,49 +87,23 @@ func TestNewTeam_DoesNotHaveAccessTenant(t *testing.T) {
 		Name: fmt.Sprintf("TestTeamName%s", unique),
 	}
 
-	jsonData, err := json.Marshal(dto)
-	if err != nil {
-		fmt.Printf("could not marshal userPass: %s\n", err)
-		os.Exit(1)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/team", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginRes.AccessToken)
-	req.Header.Add("x-tenant-id", uuid.New().String())
-
 	// When
 
 	startTime := time.Now().UTC()
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[myhttp.ApiError](
+		t,
+		http.MethodPost,
+		"http://localhost:8080/team",
+		dto,
+		loginRes.AccessToken,
+		uuid.New().String(),
+	)
 	endTime := time.Now().UTC()
 
 	// Then
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode, "Status code is not a 200")
-
-	var actual myhttp.ApiError
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, "User is unauthorized to access tenant.", actual.Message)
-	parsedTime, err := time.Parse(time.RFC3339, actual.Timestamp)
-	startTime = startTime.Truncate(time.Second)
-	endTime = endTime.Truncate(time.Second)
-
-	assert.NoError(t, err)
-	assert.True(t, parsedTime.Equal(startTime) || parsedTime.After(startTime), "timestamp is not after or equal to the start of the test.")
-	assert.True(t, parsedTime.Equal(endTime) || parsedTime.Before(endTime), "timestamp is not before or equal to the end of the test.")
+	assertApiError(t, actual, "User is unauthorized to access tenant.", startTime, endTime)
 }
 
 func TestGetAllTeams_EmptyResponse(t *testing.T) {
@@ -183,32 +111,20 @@ func TestGetAllTeams_EmptyResponse(t *testing.T) {
 
 	_, loginRes := login(t)
 
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/team", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginRes.AccessToken)
-
 	// When
 
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[*team.TeamGetAllDTO](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/team",
+		nil,
+		loginRes.AccessToken,
+		"",
+	)
 
 	// Then
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
-
-	var actual tenant.TenantGetAllDTO
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	assert.Equal(t, 0, actual.Count, "count does not equal 0.")
 	assert.Equal(t, 0, len(actual.Data), "data count does not equal 0.")
 }
@@ -216,37 +132,24 @@ func TestGetAllTeams_EmptyResponse(t *testing.T) {
 func TestGetAllTeams_MultipleTeams(t *testing.T) {
 	// Given
 	u, loginRes := login(t)
-	ten := createTenant(t, u.Id, fmt.Sprintf("TestTenant%s", u.Id))
-	tm1 := createTeam(t, ten.Id, fmt.Sprintf("TestTeamA%s", ten.Id))
-	tm2 := createTeam(t, ten.Id, fmt.Sprintf("TestTeamB%s", ten.Id))
-
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/team", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginRes.AccessToken)
-	req.Header.Add("x-tenant-id", ten.Id)
+	tn := createTenant(t, u.Id, fmt.Sprintf("TestTenant%s", u.Id))
+	tm1 := createTeam(t, tn.Id, fmt.Sprintf("TestTeamA%s", tn.Id))
+	tm2 := createTeam(t, tn.Id, fmt.Sprintf("TestTeamB%s", tn.Id))
 
 	// When
 
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[*team.TeamGetAllDTO](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/team",
+		nil,
+		loginRes.AccessToken,
+		tn.Id,
+	)
 
 	// Then
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
-
-	var actual tenant.TenantGetAllDTO
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	assert.Equal(t, 2, actual.Count, "count does not equal 2.")
 	assert.Equal(t, 2, len(actual.Data), "data count does not equal 2.")
 	assert.Equal(t, tm1, actual.Data[0], "data does not equal first team.")
@@ -255,35 +158,25 @@ func TestGetAllTeams_MultipleTeams(t *testing.T) {
 
 func TestProcessNewTenantMessage(t *testing.T) {
 	// Given
-	db := database.ConnectPostgres()
-	_, loginResp := login(t)
 
+	db := database.ConnectPostgres()
+	_, loginRes := login(t)
 	unique := uuid.New().String()
 
-	url := fmt.Sprintf("http://localhost:8080/tenant/%s", unique)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	req.Header.Add("Authorization", loginResp.AccessToken)
-
 	// When
-	res, err := http.DefaultClient.Do(req)
+
+	res, actual := sendApiReq[*tenant.Tenant](
+		t,
+		http.MethodPost,
+		fmt.Sprintf("http://localhost:8080/tenant/%s", unique),
+		nil,
+		loginRes.AccessToken,
+		"",
+	)
 
 	// Then
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
-
-	var actual tenant.Tenant
-	err = json.NewDecoder(res.Body).Decode(&actual)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	cleanUpTenant(t, actual.Id)
 	time.Sleep(6 * time.Second)

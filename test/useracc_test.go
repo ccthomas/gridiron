@@ -1,7 +1,6 @@
 package test
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,8 +12,11 @@ import (
 	"github.com/ccthomas/gridiron/internal/useracc"
 	"github.com/ccthomas/gridiron/pkg/auth"
 	"github.com/ccthomas/gridiron/pkg/database"
+	"github.com/ccthomas/gridiron/pkg/logger"
+	"github.com/ccthomas/gridiron/pkg/myhttp"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestCreateNewUser(t *testing.T) {
@@ -28,37 +30,24 @@ func TestCreateNewUser(t *testing.T) {
 		Password: fmt.Sprintf("TestCreateNewUser%s", unique),
 	}
 
-	jsonData, err := json.Marshal(userPass)
-	if err != nil {
-		fmt.Printf("could not marshal userPass: %s\n", err)
-		os.Exit(1)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
 	// When
-	res, err := http.DefaultClient.Do(req)
+
+	res, actual := sendApiReq[useracc.UserAccount](
+		t,
+		http.MethodPost,
+		"http://localhost:8080/user",
+		userPass,
+		"",
+		"",
+	)
 
 	// Then
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
 
-	var createdUser useracc.CreatedUserDTO
-	err = json.NewDecoder(res.Body).Decode(&createdUser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cleanUpUser(t, actual.Id)
 
-	cleanUpUser(t, createdUser.Id)
-
-	rows, err := db.Query("SELECT * FROM user_account.user_account WHERE id = $1", createdUser.Id)
+	rows, err := db.Query("SELECT * FROM user_account.user_account WHERE id = $1", actual.Id)
 	if err != nil {
 		t.Fatal("Failed to prepare query.", err.Error())
 	}
@@ -72,8 +61,8 @@ func TestCreateNewUser(t *testing.T) {
 		t.Fatal("User was not created.", err.Error())
 	}
 
-	assert.Equal(t, userAccount.Id, createdUser.Id, "User account id is incorrect")
-	assert.Equal(t, userAccount.Username, createdUser.Username, "User account username is incorrect")
+	assert.Equal(t, userAccount.Id, actual.Id, "User account id is incorrect")
+	assert.Equal(t, userAccount.Username, actual.Username, "User account username is incorrect")
 
 	match := useracc.CheckPasswordHash(userPass.Password, userAccount.PasswordHash)
 	assert.True(t, match, "User password does not match")
@@ -89,147 +78,71 @@ func TestCreateNewUser_UsernameTaken(t *testing.T) {
 		Password: fmt.Sprintf("TestCreateNewUser%s", unique),
 	}
 
-	jsonData, err := json.Marshal(userPass)
-	if err != nil {
-		fmt.Printf("could not marshal userPass: %s\n", err)
-		os.Exit(1)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
 	// When
+
 	startTime := time.Now().UTC()
-	res, err := http.DefaultClient.Do(req)
+	res, actual := sendApiReq[myhttp.ApiError](
+		t,
+		http.MethodPost,
+		"http://localhost:8080/user",
+		userPass,
+		"",
+		"",
+	)
 	endTime := time.Now().UTC()
 
 	// Then
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode, "Status code is not a 400")
-	assertApiError(t, res.Body, "Username is taken.", startTime, endTime)
+	assertApiError(t, actual, "Username is taken.", startTime, endTime)
 }
 
 func TestLogin_WithAuthorizerContext_TenantAccessEmpty(t *testing.T) {
 	// Given - login
-	existing := createUser(t)
 
-	reqLogin, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user/login", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	reqLogin.SetBasicAuth(existing.Username, existing.Password)
-
-	// When - login
-	resLogin, err := http.DefaultClient.Do(reqLogin)
-
-	// Then - login
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	assert.Equal(t, http.StatusOK, resLogin.StatusCode, "Status code is not a 200")
-
-	var loginResponse useracc.LoginResponseDTO
-	err = json.NewDecoder(resLogin.Body).Decode(&loginResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.NotNil(t, loginResponse.AccessToken, "Access token is nil.")
-
-	// Given - Authorizer Token
-	reqAuth, err := http.NewRequest(http.MethodGet, "http://localhost:8080/user/authorizer-context", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	reqAuth.Header.Set("Authorization", loginResponse.AccessToken)
+	existing, loginRes := login(t)
 
 	// When - Authorizer Token
-	resAuth, err := http.DefaultClient.Do(reqAuth)
 
-	// Then - Authorizer Token
-	if err != nil {
-		log.Fatalln(err)
-	}
+	res, actual := sendApiReq[auth.AuthorizerContext](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/user/authorizer-context",
+		nil,
+		loginRes.AccessToken,
+		"",
+	)
 
-	var authCtx auth.AuthorizerContext
-	err = json.NewDecoder(resAuth.Body).Decode(&authCtx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Then
 
-	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
-	assert.Equal(t, 0, len(authCtx.TenantAccess), "Authorizer context tenant access is not empty")
+	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
+	assert.Equal(t, existing.Id, actual.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, 0, len(actual.TenantAccess), "Authorizer context tenant access is not empty")
 }
 
 func TestLogin_WithAuthorizerContext_TenantAccessNonEmpty(t *testing.T) {
-	// Given - login
-	existing := createUser(t)
+	// Given
+	existing, loginRes := login(t)
 	tenant1 := createTenant(t, existing.Id, "Name")
 
-	reqLogin, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user/login", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	reqLogin.SetBasicAuth(existing.Username, existing.Password)
-
-	// When - login
-	resLogin, err := http.DefaultClient.Do(reqLogin)
-
-	// Then - login
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	assert.Equal(t, http.StatusOK, resLogin.StatusCode, "Status code is not a 200")
-
-	var loginResponse useracc.LoginResponseDTO
-	err = json.NewDecoder(resLogin.Body).Decode(&loginResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.NotNil(t, loginResponse.AccessToken, "Access token is nil.")
-
-	// Given - Authorizer Token
-	reqAuth, err := http.NewRequest(http.MethodGet, "http://localhost:8080/user/authorizer-context", nil)
-	if err != nil {
-		fmt.Printf("client: could not create request: %s\n", err)
-		os.Exit(1)
-	}
-
-	reqAuth.Header.Set("Authorization", loginResponse.AccessToken)
-
 	// When - Authorizer Token
-	resAuth, err := http.DefaultClient.Do(reqAuth)
+
+	res, actual := sendApiReq[auth.AuthorizerContext](
+		t,
+		http.MethodGet,
+		"http://localhost:8080/user/authorizer-context",
+		nil,
+		loginRes.AccessToken,
+		"",
+	)
 
 	// Then - Authorizer Token
-	if err != nil {
-		log.Fatalln(err)
-	}
 
-	var authCtx auth.AuthorizerContext
-	err = json.NewDecoder(resAuth.Body).Decode(&authCtx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, existing.Id, authCtx.UserId, "Authorizer context does not contain user id")
+	assert.Equal(t, http.StatusOK, res.StatusCode, "Status code is not a 200")
+	assert.Equal(t, existing.Id, actual.UserId, "Authorizer context does not contain user id")
 	assert.Equal(t, map[string]auth.AccessLevel{
 		tenant1.Id: auth.Owner,
-	}, authCtx.TenantAccess, "Authorizer context tenant access is not empty")
+	}, actual.TenantAccess, "Authorizer context tenant access is not empty")
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
@@ -254,19 +167,25 @@ func TestLogin_WrongPassword(t *testing.T) {
 		log.Fatalln(err)
 	}
 
+	var actual myhttp.ApiError
+	err = json.NewDecoder(res.Body).Decode(&actual)
+	if err != nil {
+		logger.Get().Fatal("Failed decoded response body for login with wrong password", zap.Error(err))
+		t.Fatal(err)
+	}
+
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode, "Status code is not a 400")
-	assertApiError(t, res.Body, "Invalid username or password.", startTime, endTime)
+	assertApiError(t, actual, "Invalid username or password.", startTime, endTime)
 }
 
 func TestLogin_UserDoesNotExist(t *testing.T) {
-	// Given - login
 	reqLogin, err := http.NewRequest(http.MethodPost, "http://localhost:8080/user/login", nil)
 	if err != nil {
 		fmt.Printf("client: could not create request: %s\n", err)
 		os.Exit(1)
 	}
 
-	reqLogin.SetBasicAuth("Non Existent User", "Wrong Password")
+	reqLogin.SetBasicAuth("Non existed user", "Wrong Password")
 
 	// When
 	startTime := time.Now().UTC()
@@ -275,9 +194,16 @@ func TestLogin_UserDoesNotExist(t *testing.T) {
 
 	// Then
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln(err)
+	}
+
+	var actual myhttp.ApiError
+	err = json.NewDecoder(res.Body).Decode(&actual)
+	if err != nil {
+		logger.Get().Fatal("Failed decoded response body for login with wrong password", zap.Error(err))
+		t.Fatal(err)
 	}
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode, "Status code is not a 400")
-	assertApiError(t, res.Body, "Invalid username or password.", startTime, endTime)
+	assertApiError(t, actual, "Invalid username or password.", startTime, endTime)
 }
